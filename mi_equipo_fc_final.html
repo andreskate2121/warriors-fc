@@ -499,8 +499,27 @@ function showBlocked(){
 let isAdmin=false;
 function toggleAdmin(){
   isAdmin=!isAdmin;
-  document.getElementById('l-passfield').style.display=isAdmin?'':'none';
-  document.getElementById('l-subtitle').textContent=isAdmin?'Acceso administrador':'Ingresa con tu número de identificación';
+  const cedInput=document.getElementById('l-ced');
+  const passField=document.getElementById('l-passfield');
+  const subtitle=document.getElementById('l-subtitle');
+  const cedLabel=document.querySelector('#scr-login .fi label');
+  if(isAdmin){
+    passField.style.display='';
+    subtitle.textContent='Acceso administrador';
+    cedInput.placeholder='Correo del administrador';
+    cedInput.type='email';
+    cedInput.inputMode='email';
+    cedInput.value='andreskate2121@gmail.com';
+    if(cedLabel) cedLabel.textContent='Correo electrónico';
+  } else {
+    passField.style.display='none';
+    subtitle.textContent='Ingresa con tu número de identificación';
+    cedInput.placeholder='Ej: 1234567890';
+    cedInput.type='text';
+    cedInput.inputMode='numeric';
+    cedInput.value='';
+    if(cedLabel) cedLabel.textContent='Número de identificación';
+  }
 }
 
 async function doLogin(){
@@ -508,9 +527,17 @@ async function doLogin(){
   if(!c){setErr('Ingresa tu número de identificación');return;}
   clearErr();
   if(isAdmin){
+    const email=document.getElementById('l-ced').value.trim();
     const p=document.getElementById('l-pass').value;
-    try{await window.auth.signInWithEmailAndPassword('andreskate2121@gmail.com',p);}
-    catch(e){setErr('Contraseña incorrecta');}
+    if(!p){setErr('Ingresa la contraseña');return;}
+    try{await window.auth.signInWithEmailAndPassword(email,p);}
+    catch(e){
+      console.log('Login error:',e.code, e.message);
+      if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'){setErr('Contraseña incorrecta');}
+      else if(e.code==='auth/user-not-found'){setErr('Correo no registrado');}
+      else if(e.code==='auth/invalid-email'){setErr('Correo inválido');}
+      else{setErr('Error: '+e.message);}
+    }
     return;
   }
   // player
