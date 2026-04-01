@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi Equipo FC">
+<meta name="theme-color" content="#0d1117">
+<title>Mi Equipo FC ⚽</title>
+<!--
+╔══════════════════════════════════════════════════════════╗
+║         CONFIGURACIÓN FIREBASE — LEER PRIMERO            ║
+╠══════════════════════════════════════════════════════════╣
+║ PASO 1 → https://console.firebase.google.com             ║
+║          Crear proyecto "MiEquipoFC"                     ║
+║                                                          ║
+║ PASO 2 → Build › Authentication › Get started            ║
+║          Activar "Email/Password"                        ║
+║                                                          ║
+║ PASO 3 → Build › Firestore Database › Create database    ║
+║          Elegir "Start in test mode"                     ║
+║                                                          ║
+║ PASO 4 → Build › Storage › Get started › Done            ║
+║                                                          ║
+║ PASO 5 → Project Settings ⚙ › General › Your apps       ║
+║          Clic en </> · Registrar app · Copiar config     ║
+║          Pegar ABAJO donde dice firebaseConfig           ║
+║                                                          ║
+║ PASO 6 → Authentication › Users › Add user               ║
+║          Email: admin@miequipo.fc                        ║
+║          Password: (la que tú elijas, guárdala bien)     ║
+║          Copiar el UID generado                          ║
+║                                                          ║
+║ PASO 7 → Firestore › + Iniciar colección                 ║
+║          ID colección: config                            ║
+║          ID documento: admin                             ║
+║          Campo: uid | Tipo: string | Valor: UID_COPIADO  ║
+║                                                          ║
+║ ¡LISTO! Ya puedes abrir la app y entrar como admin.      ║
+╚══════════════════════════════════════════════════════════╝
+-->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --g:#2ecc71;--gd:#27ae60;--r:#e74c3c;--y:#f1c40f;--b:#3498db;--p:#9b59b6;
+  --d0:#0d1117;--d1:#161b22;--d2:#21262d;--d3:#30363d;
+  --tx:#e6edf3;--mt:#8b949e;--br:#30363d;--ra:10px;
+}
+html,body{height:100%;overflow-x:hidden;}
+body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-size:14px;}
+
+/* LOADING */
+#scr-load{position:fixed;inset:0;background:var(--d0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;}
+.spin{width:38px;height:38px;border:3px solid var(--d2);border-top-color:var(--g);border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* LOGIN */
+#scr-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at top,#1a2e1a,var(--d0) 65%);}
+.lbox{width:100%;max-width:360px;}
+.llogo{text-align:center;margin-bottom:28px;}
+.llogo .ico{width:68px;height:68px;background:var(--g);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 12px;}
+.llogo h1{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:3px;}
+.llogo p{font-size:12px;color:var(--mt);}
+.lcard{background:var(--d1);border:1px solid var(--br);border-radius:14px;padding:22px;}
+.lcard h2{font-size:14px;font-weight:500;color:var(--mt);text-align:center;margin-bottom:18px;}
+.fi{margin-bottom:12px;}
+.fi label{display:block;font-size:12px;color:var(--mt);font-weight:500;margin-bottom:5px;}
+.fi input{width:100%;background:var(--d2);border:1px solid var(--br);color:var(--tx);border-radius:8px;padding:11px 13px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border .15s;}
+.fi input:focus{border-color:var(--g);}
+.btn-login{width:100%;padding:12px;background:var(--g);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-top:6px;transition:background .15s;}
+.btn-login:hover{background:var(--gd);}
+.lerr{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);color:var(--r);border-radius:8px;padding:10px 13px;font-size:13px;margin-top:10px;display:none;}
+.ltoggle{text-align:center;margin-top:12px;font-size:12px;color:var(--mt);}
+.ltoggle span{color:var(--g);cursor:pointer;font-weight:600;}
+
+/* FIRST TIME */
+#scr-first{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at top,#1a2e1a,var(--d0) 65%);}
+.fbox{width:100%;max-width:400px;}
+.fbox .titulo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--g);text-align:center;margin-bottom:6px;}
+.fbox .subtit{font-size:13px;color:var(--mt);text-align:center;margin-bottom:22px;}
+
+/* APP */
+#app{display:none;flex-direction:column;min-height:100vh;}
+.topbar{display:flex;align-items:center;gap:12px;padding:11px 16px;background:var(--d1);border-bottom:1px solid var(--br);position:sticky;top:0;z-index:50;}
+.tb-av{width:36px;height:36px;border-radius:50%;background:var(--g);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#fff;overflow:hidden;flex-shrink:0;}
+.tb-av img{width:100%;height:100%;object-fit:cover;}
+.tb-info{flex:1;min-width:0;}
+.tb-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tb-sub{font-size:11px;color:var(--mt);display:flex;align-items:center;gap:6px;}
+.live-dot{width:6px;height:6px;background:var(--g);border-radius:50%;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.abadge{background:rgba(155,89,182,.2);color:var(--p);font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;}
+.bbadge{background:rgba(231,76,60,.2);color:var(--r);font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.btn-out{background:transparent;border:1px solid var(--br);color:var(--mt);padding:6px 11px;border-radius:7px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.btn-out:hover{color:var(--r);border-color:var(--r);}
+.tabs{display:flex;gap:3px;padding:7px;background:var(--d1);border-bottom:1px solid var(--br);overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex-shrink:0;padding:7px 13px;background:transparent;border:none;color:var(--mt);cursor:pointer;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;transition:all .15s;white-space:nowrap;}
+.tab.active{background:var(--g);color:#fff;}
+.tab:hover:not(.active){background:var(--d2);color:var(--tx);}
+.content{flex:1;padding:16px;max-width:900px;margin:0 auto;width:100%;}
+
+/* CARDS & FORMS */
+.stitle{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--g);margin-bottom:14px;}
+.card{background:var(--d1);border:1px solid var(--br);border-radius:var(--ra);padding:16px;margin-bottom:14px;}
+.fg{display:flex;flex-direction:column;gap:5px;}
+.fg label{font-size:12px;color:var(--mt);font-weight:500;}
+.fg input,.fg select,.fg textarea{background:var(--d2);border:1px solid var(--br);color:var(--tx);border-radius:7px;padding:9px 10px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border .15s;width:100%;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--g);}
+.fg input[readonly]{opacity:.5;cursor:not-allowed;}
+.fg select option{background:var(--d2);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.factions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap;}
+
+/* BUTTONS */
+.btn{padding:9px 17px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;font-size:13px;transition:all .15s;}
+.bg{background:var(--g);color:#fff;}.bg:hover{background:var(--gd);}
+.bo{background:transparent;color:var(--mt);border:1px solid var(--br);}.bo:hover{color:var(--tx);}
+.br_{background:transparent;color:var(--r);border:1px solid var(--r);font-size:12px;padding:5px 10px;}
+.bb{background:var(--b);color:#fff;}
+.by{background:var(--y);color:#000;}
+.bsm{padding:5px 11px;font-size:12px;}
+
+/* CARNET */
+.carnet{background:linear-gradient(135deg,#1a2e1a,#0d1f2d);border:1px solid var(--gd);border-radius:16px;padding:22px;margin-bottom:18px;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;}
+.c-photo-wrap{flex-shrink:0;text-align:center;}
+.c-photo{width:96px;height:96px;border-radius:12px;border:2px solid var(--g);overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--d2);cursor:pointer;position:relative;}
+.c-photo img{width:100%;height:100%;object-fit:cover;}
+.c-photo .ov{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;font-size:11px;color:#fff;border-radius:10px;text-align:center;}
+.c-photo:hover .ov{display:flex;}
+.c-ini{font-family:'Bebas Neue',sans-serif;font-size:34px;color:var(--g);}
+.c-hint{font-size:10px;color:var(--mt);margin-top:5px;cursor:pointer;}
+.c-info{flex:1;min-width:180px;}
+.c-num{font-family:'Bebas Neue',sans-serif;font-size:50px;color:rgba(46,204,113,.12);line-height:1;margin-bottom:-6px;}
+.c-name{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;color:var(--tx);line-height:1.1;}
+.c-sub{font-size:12px;color:var(--mt);margin-top:2px;margin-bottom:10px;}
+.chips{display:flex;gap:7px;flex-wrap:wrap;}
+.chip{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.cg{background:rgba(46,204,113,.15);color:var(--g);}
+.cb{background:rgba(52,152,219,.15);color:var(--b);}
+.cy{background:rgba(241,196,15,.15);color:var(--y);}
+
+/* PLAYER GRID (admin) */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:12px;}
+.pcard{background:var(--d2);border:1px solid var(--br);border-radius:var(--ra);padding:13px;position:relative;cursor:pointer;transition:border-color .15s;}
+.pcard:hover{border-color:var(--g);}
+.pav{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:17px;color:#fff;overflow:hidden;margin-bottom:8px;}
+.pav img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.pnum{position:absolute;top:10px;right:10px;font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--d3);line-height:1;}
+.pname{font-weight:600;font-size:13px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ppos{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.pced{font-size:11px;color:var(--mt);}
+.blocked-overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);border-radius:var(--ra);display:flex;align-items:center;justify-content:center;}
+.blocked-label{background:var(--r);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;text-transform:uppercase;}
+.pos-POR{background:rgba(52,152,219,.2);color:#3498db;}
+.pos-DEF{background:rgba(46,204,113,.2);color:#2ecc71;}
+.pos-MED{background:rgba(241,196,15,.2);color:#f1c40f;}
+.pos-DEL{background:rgba(231,76,60,.2);color:#e74c3c;}
+
+/* APORTES */
+.cajabox{background:linear-gradient(135deg,#1a2e1a,#0f1f0f);border:1px solid var(--gd);border-radius:14px;padding:20px;margin-bottom:18px;text-align:center;}
+.cajatotal{font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--g);letter-spacing:2px;line-height:1;}
+.cajasub{font-size:12px;color:var(--mt);margin-top:4px;}
+.cajagrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;}
+.cajamini{background:rgba(0,0,0,.3);border-radius:8px;padding:10px;}
+.cajamval{font-family:'Bebas Neue',sans-serif;font-size:22px;}
+.cajamlbl{font-size:10px;color:var(--mt);margin-top:2px;}
+.arow{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;background:var(--d2);border-radius:8px;margin-bottom:7px;border:1px solid var(--br);gap:10px;}
+.aleft{display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+.aav{width:34px;height:34px;border-radius:50%;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;}
+.aav img{width:100%;height:100%;object-fit:cover;}
+.aname{font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ameta{font-size:11px;color:var(--mt);}
+.aamount{font-family:'Bebas Neue',sans-serif;font-size:18px;}
+.pbar{width:100%;background:var(--d3);border-radius:20px;height:5px;margin-top:4px;}
+.pfill{height:5px;border-radius:20px;transition:width .4s;}
+.paid-bar{background:var(--g);}.part-bar{background:var(--y);}.none-bar{background:var(--r);}
+.sdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.sdot-g{background:var(--g);}.sdot-y{background:var(--y);}.sdot-r{background:var(--r);}
+
+/* MATCHES */
+.mlist{display:flex;flex-direction:column;gap:10px;}
+.mitem{background:var(--d2);border:1px solid var(--br);border-radius:var(--ra);padding:12px 15px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.mscore{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--g);letter-spacing:2px;}
+.rbadge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;text-transform:uppercase;}
+.rw{background:rgba(46,204,113,.15);color:var(--g);}
+.rl{background:rgba(231,76,60,.15);color:var(--r);}
+.rd{background:rgba(241,196,15,.15);color:var(--y);}
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.scard{background:var(--d1);border:1px solid var(--br);border-radius:var(--ra);padding:12px;text-align:center;}
+.sval{font-family:'Bebas Neue',sans-serif;font-size:26px;line-height:1;}
+.slbl{font-size:11px;color:var(--mt);margin-top:3px;}
+
+/* STATS TABLE */
+.stbl{width:100%;border-collapse:collapse;}
+.stbl th{text-align:left;font-size:11px;color:var(--mt);font-weight:600;padding:8px 10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--br);}
+.stbl td{padding:9px 10px;border-bottom:1px solid var(--d2);font-size:13px;}
+.stbl tr:last-child td{border-bottom:none;}
+.stbl tr:hover td{background:var(--d2);}
+
+/* MODAL */
+.mov{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px;}
+.mbox{background:var(--d1);border:1px solid var(--br);border-radius:14px;padding:20px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;}
+.mtitle{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--g);margin-bottom:16px;}
+
+/* MISC */
+.pill-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.pill{padding:4px 10px;border-radius:20px;font-size:12px;border:1px solid var(--br);color:var(--mt);cursor:pointer;background:var(--d2);}
+.pill.sel{border-color:var(--g);color:var(--g);background:rgba(46,204,113,.1);}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;}
+.empty{text-align:center;padding:38px;color:var(--mt);}
+.empty-ico{font-size:34px;margin-bottom:10px;}
+.exbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.tgg{color:var(--g);}.tgy{color:var(--y);}.tgr{color:var(--r);}
+#photo-input{display:none;}
+
+/* BLOCKED SCREEN */
+#scr-blocked{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;display:none;}
+.blocked-box{text-align:center;max-width:320px;}
+.blocked-box .ico{font-size:48px;margin-bottom:16px;}
+.blocked-box h2{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--r);margin-bottom:10px;}
+.blocked-box p{font-size:13px;color:var(--mt);line-height:1.6;}
+
+@media(max-width:520px){
+  .grid2{grid-template-columns:1fr;}
+  .grid3{grid-template-columns:1fr 1fr;}
+  .sgrid{grid-template-columns:1fr 1fr;}
+  .pgrid{grid-template-columns:1fr 1fr;}
+  .cajagrid{grid-template-columns:1fr 1fr;}
+  .carnet{flex-direction:column;align-items:center;text-align:center;}
+  .chips{justify-content:center;}
+}
+</style>
+</head>
+<body>
+
+<div id="scr-load"><div style="font-size:34px">⚽</div><div class="spin"></div><div style="font-size:12px;color:var(--mt)">Cargando...</div></div>
+
+<!-- LOGIN -->
+<div id="scr-login" style="display:none">
+  <div class="lbox">
+    <div class="llogo">
+      <div class="ico">⚽</div>
+      <h1 id="l-teamname">Mi Equipo FC</h1>
+      <p>Sistema de gestión del equipo</p>
+    </div>
+    <div class="lcard">
+      <h2 id="l-subtitle">Ingresa con tu número de identificación</h2>
+      <div class="fi"><label>Número de identificación</label><input type="text" id="l-ced" placeholder="Ej: 1234567890" inputmode="numeric" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+      <div class="fi" id="l-passfield" style="display:none"><label>Contraseña (admin)</label><input type="password" id="l-pass" placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+      <button class="btn-login" onclick="doLogin()">Entrar ⚽</button>
+      <div class="lerr" id="l-err"></div>
+      <div class="ltoggle"><span onclick="toggleAdmin()">Acceso administrador</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- BLOCKED -->
+<div id="scr-blocked" style="display:none;align-items:center;justify-content:center;min-height:100vh;padding:20px;">
+  <div class="blocked-box">
+    <div class="ico">🚫</div>
+    <h2>Cuenta suspendida</h2>
+    <p>Tu cuenta ha sido bloqueada por el administrador.<br>Contacta al administrador para más información.</p>
+    <button class="btn bg" style="margin-top:20px" onclick="doLogout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<!-- FIRST TIME -->
+<div id="scr-first" style="display:none">
+  <div class="fbox">
+    <div class="titulo">⚽ Bienvenido</div>
+    <div class="subtit">Completa tu perfil para continuar.<br>Tu nombre e identificación no podrán cambiarse después.</div>
+    <div class="card">
+      <div class="fg" style="margin-bottom:12px"><label>Identificación (no editable)</label><input id="ft-ced" readonly /></div>
+      <div class="fg" style="margin-bottom:12px"><label>Nombre completo *</label><input id="ft-nombre" placeholder="Nombre y apellidos completos" /></div>
+      <div class="grid3" style="margin-top:4px;gap:10px">
+        <div class="fg"><label>Fecha de nacimiento</label><input type="date" id="ft-fnac" /></div>
+        <div class="fg"><label># Camiseta</label><input type="number" id="ft-num" placeholder="10" min="1" max="99" /></div>
+        <div class="fg"><label>Nombre camiseta</label><input id="ft-ncam" placeholder="APELLIDO" maxlength="12" /></div>
+      </div>
+      <div class="factions"><button class="btn bg" onclick="saveFirstTime()">Guardar y entrar →</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="tb-av" id="tb-av"><span id="tb-ini">?</span></div>
+    <div class="tb-info">
+      <div class="tb-name" id="tb-name">...</div>
+      <div class="tb-sub"><span class="live-dot"></span><span>En vivo</span></div>
+    </div>
+    <span class="abadge" id="tb-admin" style="display:none">Admin</span>
+    <button class="btn-out" onclick="doLogout()">Salir</button>
+  </div>
+  <div class="tabs" id="main-tabs"></div>
+  <div class="content" id="main-content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="photo-input" accept="image/*" onchange="handlePhotoUpload(this)">
+<div id="modal-wrap"></div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" onerror="showNoInternet()"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+<script>
+// ══════════════════════════════════════════════
+//   🔥 PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE
+// ══════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "AIzaSyBs3mVl6k7sh7YNDA1drCk3-prUoaB95OE",
+  authDomain:        "warriors-800db.firebaseapp.com",
+  projectId:         "warriors-800db",
+  storageBucket:     "warriors-800db.firebasestorage.app",
+  messagingSenderId: "222280224281",
+  appId:             "1:222280224281:web:eb8380cee5c5d69c882488"
+};
+
+// Cloudinary config (fotos gratis)
+const CLOUDINARY_CLOUD = "dwef0bowz";
+const CLOUDINARY_PRESET = "warrios_fc";
+// ══════════════════════════════════════════════
+
+// ── DETECTAR SI NO ESTÁ CONFIGURADO ───────────
+function isConfigured(){
+  return firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('PEGA_TU');
+}
+
+function showNoInternet(){
+  document.getElementById('scr-load').innerHTML=`
+    <div style="text-align:center;padding:30px;max-width:340px">
+      <div style="font-size:40px;margin-bottom:16px">📶</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:#e74c3c;margin-bottom:10px">Sin conexión</div>
+      <div style="font-size:13px;color:#8b949e;line-height:1.6">Esta app necesita internet para funcionar.<br>Conéctate a WiFi o datos móviles y recarga la página.</div>
+      <button onclick="location.reload()" style="margin-top:20px;padding:10px 24px;background:#2ecc71;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🔄 Reintentar</button>
+    </div>`;
+}
+
+function showSetupScreen(){
+  document.getElementById('scr-load').innerHTML=`
+    <div style="max-width:480px;width:100%;padding:20px">
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="font-size:40px">🔥</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#2ecc71;letter-spacing:2px;margin-top:8px">Configurar Firebase</div>
+        <div style="font-size:13px;color:#8b949e;margin-top:6px">Sigue estos pasos para activar la app</div>
+      </div>
+      <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:18px;margin-bottom:14px">
+        <div style="font-size:13px;line-height:2;color:#e6edf3">
+          <div><span style="color:#2ecc71;font-weight:600">Paso 1</span> → Ve a <a href="https://console.firebase.google.com" target="_blank" style="color:#3498db">console.firebase.google.com</a></div>
+          <div><span style="color:#2ecc71;font-weight:600">Paso 2</span> → Crea un proyecto llamado <b>MiEquipoFC</b></div>
+          <div><span style="color:#2ecc71;font-weight:600">Paso 3</span> → Build → Authentication → Email/Password → Activar</div>
+          <div><span style="color:#2ecc71;font-weight:600">Paso 4</span> → Build → Firestore Database → Create (test mode)</div>
+          <div><span style="color:#2ecc71;font-weight:600">Paso 5</span> → Build → Storage → Get started</div>
+          <div><span style="color:#2ecc71;font-weight:600">Paso 6</span> → ⚙️ Project Settings → General → Your apps → &lt;/&gt; → Copiar config</div>
+          <div><span style="color:#2ecc71;font-weight:600">Paso 7</span> → Pegar la config abajo y guardar</div>
+        </div>
+      </div>
+      <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:18px">
+        <div style="font-size:12px;color:#8b949e;margin-bottom:10px;font-weight:600">PEGA TU CONFIGURACIÓN AQUÍ:</div>
+        <textarea id="cfg-input" rows="9" placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}' style="width:100%;background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:8px;padding:10px;font-family:monospace;font-size:12px;outline:none;resize:vertical"></textarea>
+        <button onclick="applyConfig()" style="width:100%;margin-top:10px;padding:11px;background:#2ecc71;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">✅ Guardar configuración y abrir app</button>
+        <div id="cfg-err" style="color:#e74c3c;font-size:12px;margin-top:8px;display:none"></div>
+      </div>
+    </div>`;
+}
+
+function applyConfig(){
+  const raw=document.getElementById('cfg-input').value.trim();
+  try{
+    const cfg=JSON.parse(raw);
+    if(!cfg.apiKey||!cfg.projectId){document.getElementById('cfg-err').textContent='Faltan campos. Asegúrate de pegar el objeto completo.';document.getElementById('cfg-err').style.display='';return;}
+    // Save to localStorage and reload
+    localStorage.setItem('fc_firebase_config',JSON.stringify(cfg));
+    location.reload();
+  }catch(e){
+    document.getElementById('cfg-err').textContent='JSON inválido. Verifica que copiaste bien la configuración.';
+    document.getElementById('cfg-err').style.display='';
+  }
+}
+
+// ── CARGAR CONFIG GUARDADA ─────────────────────
+(function(){
+  const saved=localStorage.getItem('fc_firebase_config');
+  if(saved){
+    try{
+      const cfg=JSON.parse(saved);
+      Object.assign(firebaseConfig,cfg);
+    }catch(e){}
+  }
+})();
+
+// ── INIT ───────────────────────────────────────
+window.addEventListener('load',()=>{
+  if(typeof firebase==='undefined'){showNoInternet();return;}
+  if(!isConfigured()){showSetupScreen();return;}
+  try{
+    firebase.initializeApp(firebaseConfig);
+  }catch(e){
+    if(!e.message.includes('already')){showSetupScreen();return;}
+  }
+  startApp();
+});
+
+function startApp(){
+  const auth_=firebase.auth();
+  const db_=firebase.firestore();
+  const stor_=firebase.storage();
+  // assign globals
+  window.auth=auth_;window.db=db_;window.stor=stor_;
+  // trigger auth listener
+  auth_.onAuthStateChanged(async u=>{
+    hide('scr-load');
+    if(!u){show('scr-login');
+      try{const d=await db_.doc('config/team').get();if(d.exists&&d.data().name)document.getElementById('l-teamname').textContent=d.data().name;}catch(e){}
+      return;}
+    CU=u;
+    try{const d=await db_.doc('config/admin').get();adminUID=d.exists?d.data().uid:null;}catch(e){}
+    try{const d=await db_.doc('config/team').get();if(d.exists&&d.data().name)teamName=d.data().name;}catch(e){}
+    if(u.uid===adminUID){role='admin';ced='admin';setupAdmin();}
+    else{
+      role='player';ced=u.email.replace('@jugador.fc','');
+      const snap=await db_.doc('players/'+ced).get();
+      if(!snap.exists){await auth_.signOut();show('scr-login');return;}
+      pData=snap.data();
+      if(pData.blocked){showBlocked();return;}
+      if(!pData.profileCompleted){showFirstTime();return;}
+      setupPlayer();
+    }
+  });
+}
+
+// PWA manifest
+(()=>{
+  const m={name:'Warriors FC',short_name:'Equipo FC',start_url:'.',display:'standalone',background_color:'#0d1117',theme_color:'#0d1117',icons:[{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚽</text></svg>',sizes:'any',type:'image/svg+xml'}]};
+  const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/json'}));document.head.appendChild(l);
+})();
+
+// ── STATE ──────────────────────────────────────
+let CU=null, role=null, ced=null, pData=null, adminUID=null;
+let teamMeta=0, teamName='Warriors FC', selForm='';
+let _uns=[];
+
+const fmt  = n=>'$'+Number(n||0).toLocaleString('es-CO');
+const ini  = n=>(n||'?').trim().split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+const clr  = c=>['#e74c3c','#3498db','#9b59b6','#e67e22','#1abc9c','#e91e63','#ff5722','#2196f3','#00bcd4','#8bc34a','#ff9800','#607d8b'][parseInt(c||'0')%12];
+
+function toast(msg,err=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.background=err?'var(--r)':'var(--g)';
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+
+function hide(id){document.getElementById(id).style.display='none';}
+function show(id,flex=false){document.getElementById(id).style.display=flex?'flex':'';}
+
+function showBlocked(){
+  hide('scr-login');hide('scr-first');hide('app');
+  document.getElementById('scr-blocked').style.display='flex';
+}
+
+// ── LOGIN ──────────────────────────────────────
+let isAdmin=false;
+function toggleAdmin(){
+  isAdmin=!isAdmin;
+  document.getElementById('l-passfield').style.display=isAdmin?'':'none';
+  document.getElementById('l-subtitle').textContent=isAdmin?'Acceso administrador':'Ingresa con tu número de identificación';
+}
+
+async function doLogin(){
+  const c=document.getElementById('l-ced').value.trim();
+  if(!c){setErr('Ingresa tu número de identificación');return;}
+  clearErr();
+  if(isAdmin){
+    const p=document.getElementById('l-pass').value;
+    try{await window.auth.signInWithEmailAndPassword('admin@miequipo.fc',p);}
+    catch(e){setErr('Contraseña incorrecta');}
+    return;
+  }
+  // player
+  const snap=await window.db.doc('players/'+c).get().catch(()=>null);
+  if(!snap||!snap.exists){setErr('Identificación no registrada. Contacta al administrador.');return;}
+  if(snap.data().blocked){setErr('Tu cuenta está bloqueada. Contacta al administrador.');return;}
+  const email=c+'@jugador.fc';
+  try{await window.auth.signInWithEmailAndPassword(email,c);}
+  catch(e){
+    if(e.code==='auth/user-not-found'||e.code==='auth/invalid-credential'){
+      try{await window.auth.createUserWithEmailAndPassword(email,c);}
+      catch(e2){setErr('Error: '+e2.message);}
+    } else setErr('Error al ingresar. Intenta de nuevo.');
+  }
+}
+function setErr(m){const e=document.getElementById('l-err');e.textContent=m;e.style.display='block';}
+function clearErr(){document.getElementById('l-err').style.display='none';}
+
+function doLogout(){
+  _uns.forEach(u=>{try{u();}catch(e){}});_uns=[];
+  window.auth.signOut();
+  hide('app');hide('scr-first');hide('scr-blocked');
+  show('scr-login');
+}
+
+// ── FIRST TIME ─────────────────────────────────
+function showFirstTime(){
+  hide('app');hide('scr-login');
+  document.getElementById('ft-ced').value=ced;
+  show('scr-first');
+}
+
+async function saveFirstTime(){
+  const nombre=document.getElementById('ft-nombre').value.trim();
+  if(!nombre){toast('Ingresa tu nombre completo',true);return;}
+  try{
+    await window.db.doc('players/'+ced).set({
+      cedula:ced, nombre,
+      fechaNacimiento:document.getElementById('ft-fnac').value,
+      numCamiseta:document.getElementById('ft-num').value||'',
+      nombreCamiseta:document.getElementById('ft-ncam').value.toUpperCase().trim()||nombre.split(' ')[0].toUpperCase(),
+      profileCompleted:true,
+      blocked:false,
+      stats:{goals:0,assists:0,games:0,yellow:0,red:0,mins:0},
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    const snap=await window.db.doc('players/'+ced).get();
+    pData=snap.data();
+    hide('scr-first');
+    setupPlayer();
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+// ══════════════════════════════════════════════
+//  PLAYER VIEW
+// ══════════════════════════════════════════════
+function setupPlayer(){
+  show('app');
+  updateTopbar(pData?.nombre||'Jugador', pData?.fotoURL||null, false);
+  renderPlayerTabs('perfil');
+  // Live listener on own data
+  const u=window.db.doc('players/'+ced).onSnapshot(d=>{
+    if(!d.exists)return;
+    pData=d.data();
+    if(pData.blocked){doLogout();return;}
+    updateTopbar(pData.nombre||'Jugador',pData.fotoURL||null,false);
+    if(document.querySelector('.tab.active')?.textContent==='Mi Perfil') renderPlayerPerfil();
+  });
+  _uns.push(u);
+}
+
+function renderPlayerTabs(t){
+  const tabs=[['perfil','Mi Perfil'],['aportes','Aportes'],['estadisticas','Estadísticas']];
+  document.getElementById('main-tabs').innerHTML=tabs.map(([k,v])=>`<button class="tab${k===t?' active':''}" onclick="renderPlayerTabs('${k}')">${v}</button>`).join('');
+  if(t==='perfil') renderPlayerPerfil();
+  if(t==='aportes') renderPlayerAportes();
+  if(t==='estadisticas') renderPlayerEstadisticas();
+}
+
+function renderPlayerPerfil(){
+  const p=pData||{};
+  document.getElementById('main-content').innerHTML=`
+    <div class="carnet">
+      <div class="c-photo-wrap">
+        <div class="c-photo" onclick="document.getElementById('photo-input').click()">
+          ${p.fotoURL?`<img src="${p.fotoURL}" onerror="this.parentElement.innerHTML='<span class=c-ini>${ini(p.nombre||'?')}</span>'">`:`<span class="c-ini">${ini(p.nombre||'?')}</span>`}
+          <div class="ov">📷<br>Cambiar foto</div>
+        </div>
+        <div class="c-hint" onclick="document.getElementById('photo-input').click()">📷 Cambiar foto</div>
+      </div>
+      <div class="c-info">
+        <div class="c-num">#${p.numCamiseta||'00'}</div>
+        <div class="c-name">${p.nombreCamiseta||p.nombre||'JUGADOR'}</div>
+        <div class="c-sub">${p.nombre||''}</div>
+        <div class="chips">
+          <span class="chip cg">⚽ ${p.pos||'MED'}</span>
+          <span class="chip cb">🪪 ${p.cedula||ced}</span>
+          ${p.fechaNacimiento?`<span class="chip cy">🎂 ${p.fechaNacimiento}</span>`:''}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stitle">⬡ Mi Perfil</div>
+      <div class="grid2">
+        <div class="fg"><label>Nombre completo (no editable)</label><input value="${p.nombre||''}" readonly /></div>
+        <div class="fg"><label>Identificación (no editable)</label><input value="${p.cedula||ced}" readonly /></div>
+      </div>
+      <div class="grid3" style="margin-top:10px">
+        <div class="fg"><label>Fecha de nacimiento</label><input type="date" id="pf-fnac" value="${p.fechaNacimiento||''}" /></div>
+        <div class="fg"><label># Camiseta</label><input type="number" id="pf-num" value="${p.numCamiseta||''}" min="1" max="99" /></div>
+        <div class="fg"><label>Nombre en camiseta</label><input id="pf-ncam" value="${p.nombreCamiseta||''}" placeholder="APELLIDO" maxlength="12" /></div>
+      </div>
+      <div class="factions"><button class="btn bg" onclick="savePlayerProfile()">Guardar cambios</button></div>
+    </div>`;
+}
+
+async function savePlayerProfile(){
+  try{
+    await window.db.doc('players/'+ced).update({
+      fechaNacimiento:document.getElementById('pf-fnac').value,
+      numCamiseta:document.getElementById('pf-num').value,
+      nombreCamiseta:document.getElementById('pf-ncam').value.toUpperCase().trim(),
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('Perfil guardado ✓');
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+function renderPlayerAportes(){
+  const el=document.getElementById('main-content');
+  el.innerHTML=`<div class="stitle">⬡ Aportes del Equipo</div><div id="ap-content"><div class="empty"><div class="spin"></div></div></div>`;
+  _uns.forEach((u,i)=>{if(i>0){try{u();}catch(e){}}}); // keep first (own data listener)
+  // Listen players + aportes
+  let players=[], aportes={};
+  const u1=window.db.collection('players').onSnapshot(s=>{players=s.docs.map(d=>({id:d.id,...d.data()}));renderApList(players,aportes,false);});
+  const u2=window.db.collection('aportes').onSnapshot(s=>{s.docs.forEach(d=>aportes[d.id]=d.data());renderApList(players,aportes,false);});
+  // load meta
+  window.db.doc('config/team').get().then(d=>{if(d.exists)teamMeta=d.data().meta||0;renderApList(players,aportes,false);});
+  _uns.push(u1,u2);
+}
+
+function renderPlayerEstadisticas(){
+  const el=document.getElementById('main-content');
+  el.innerHTML=`<div class="stitle">⬡ Estadísticas del Equipo</div><div id="st-content"><div class="empty"><div class="spin"></div></div></div>`;
+  const u=window.db.collection('players').onSnapshot(s=>{
+    const pl=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.stats?.goals||0)-(a.stats?.goals||0));
+    const el2=document.getElementById('st-content');if(!el2)return;
+    if(!pl.length){el2.innerHTML='<div class="empty"><div class="empty-ico">📊</div><div>Sin datos</div></div>';return;}
+    el2.innerHTML=`<div class="card" style="overflow-x:auto"><table class="stbl">
+      <thead><tr><th>#</th><th>Jugador</th><th>PJ</th><th>⚽ Goles</th><th>🎯 Asist</th><th>🟡</th><th>🔴</th></tr></thead>
+      <tbody>${pl.map((p,i)=>`<tr>
+        <td style="color:var(--mt);font-size:12px">${i+1}</td>
+        <td><div style="display:flex;align-items:center;gap:8px">
+          <div style="width:26px;height:26px;border-radius:50%;background:${clr(p.cedula||p.id)};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;overflow:hidden;flex-shrink:0">
+            ${p.fotoURL?`<img src="${p.fotoURL}" style="width:100%;height:100%;object-fit:cover">`:ini(p.nombre||p.id)}
+          </div><span>${p.nombre||p.id}</span></div></td>
+        <td>${p.stats?.games||0}</td>
+        <td style="font-weight:600;color:var(--g)">${p.stats?.goals||0}</td>
+        <td>${p.stats?.assists||0}</td>
+        <td style="color:var(--y)">${p.stats?.yellow||0}</td>
+        <td style="color:var(--r)">${p.stats?.red||0}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+  });
+  _uns.push(u);
+}
+
+// ── PHOTO UPLOAD ──────────────────────────────
+async function handlePhotoUpload(input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>5*1024*1024){toast('Máximo 5MB',true);return;}
+  toast('Subiendo foto...');
+  try{
+    const fd=new FormData();
+    fd.append('file',file);
+    fd.append('upload_preset',CLOUDINARY_PRESET);
+    fd.append('public_id','player_'+ced);
+    fd.append('overwrite','true');
+    const res=await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/image/upload',{method:'POST',body:fd});
+    if(!res.ok)throw new Error('Error subiendo imagen');
+    const data=await res.json();
+    const url=data.secure_url;
+    await window.db.doc('players/'+ced).update({fotoURL:url});
+    updateTopbar(pData?.nombre||'',url,false);
+    toast('Foto actualizada ✓');
+  }catch(e){toast('Error: '+e.message,true);}
+  input.value='';
+}
+
+// ── TOPBAR ────────────────────────────────────
+function updateTopbar(name,foto,isAdm){
+  document.getElementById('tb-name').textContent=name;
+  document.getElementById('tb-ini').textContent=ini(name);
+  const av=document.getElementById('tb-av');
+  if(foto) av.innerHTML=`<img src="${foto}" onerror="this.style.display='none'">`;
+  document.getElementById('tb-admin').style.display=isAdm?'':'none';
+}
+
+// ══════════════════════════════════════════════
+//  ADMIN VIEW
+// ══════════════════════════════════════════════
+function setupAdmin(){
+  show('app');
+  updateTopbar('Administrador',null,true);
+  renderAdminTabs('jugadores');
+  // live team config
+  window.db.doc('config/team').onSnapshot(d=>{if(d.exists){teamMeta=d.data().meta||0;teamName=d.data().name||'Warriors FC';}});
+}
+
+function renderAdminTabs(t){
+  const tabs=[['jugadores','Jugadores'],['aportes','Aportes'],['partidos','Partidos'],['estadisticas','Estadísticas'],['equipo','Equipo']];
+  document.getElementById('main-tabs').innerHTML=tabs.map(([k,v])=>`<button class="tab${k===t?' active':''}" onclick="renderAdminTabs('${k}')">${v}</button>`).join('');
+  _uns.forEach(u=>{try{u();}catch(e){}});_uns=[];
+  if(t==='jugadores') adminJugadores();
+  if(t==='aportes') adminAportes();
+  if(t==='partidos') adminPartidos();
+  if(t==='estadisticas') adminEstadisticas();
+  if(t==='equipo') adminEquipo();
+}
+
+// ── ADMIN: JUGADORES ──────────────────────────
+function adminJugadores(){
+  document.getElementById('main-content').innerHTML=`
+    <div class="stitle">⬡ Plantilla</div>
+    <div class="exbar"><button class="btn bb bsm" onclick="exportJugadoresExcel()">⬇ Excel jugadores</button></div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--mt)">Registrar nuevo jugador</div>
+      <div class="grid3">
+        <div class="fg"><label>Cédula / ID *</label><input id="nj-ced" placeholder="Número de identificación" inputmode="numeric"/></div>
+        <div class="fg"><label>Nombre completo *</label><input id="nj-nom" placeholder="Nombre y apellido"/></div>
+        <div class="fg"><label>Posición</label>
+          <select id="nj-pos"><option value="POR">Portero (POR)</option><option value="DEF">Defensa (DEF)</option><option value="MED" selected>Mediocampista (MED)</option><option value="DEL">Delantero (DEL)</option></select>
+        </div>
+      </div>
+      <div class="factions"><button class="btn bg" onclick="adminAddPlayer()">+ Registrar jugador</button></div>
+    </div>
+    <div id="pgrid-wrap" class="pgrid"></div>`;
+
+  const u=window.db.collection('players').onSnapshot(s=>{
+    const pl=s.docs.map(d=>({id:d.id,...d.data()}));
+    renderPGrid(pl);
+  });
+  _uns.push(u);
+}
+
+function renderPGrid(players){
+  const el=document.getElementById('pgrid-wrap');if(!el)return;
+  if(!players.length){el.innerHTML='<div class="empty"><div class="empty-ico">🏃</div><div>Sin jugadores registrados</div></div>';return;}
+  el.innerHTML=players.map(p=>{
+    const c=p.cedula||p.id;
+    return `<div class="pcard" onclick="adminEditPlayer('${c}')">
+      ${p.blocked?`<div class="blocked-overlay"><span class="blocked-label">🔒 Bloqueado</span></div>`:''}
+      <div class="pav" style="background:${clr(c)}">
+        ${p.fotoURL?`<img src="${p.fotoURL}">`:''}${!p.fotoURL?ini(p.nombre||c):''}
+      </div>
+      <div class="pnum">${p.numCamiseta||'—'}</div>
+      <div class="pname">${p.nombre||'Sin nombre'}</div>
+      <span class="ppos pos-${p.pos||'MED'}">${p.pos||'MED'}</span>
+      <div class="pced">${c}</div>
+      ${!p.profileCompleted?`<div style="font-size:10px;color:var(--y);margin-top:4px">⏳ Pendiente de registro</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function adminAddPlayer(){
+  const c=document.getElementById('nj-ced').value.trim();
+  const n=document.getElementById('nj-nom').value.trim();
+  if(!c){toast('Ingresa la cédula',true);return;}
+  if(!n){toast('Ingresa el nombre',true);return;}
+  const existing=await window.db.doc('players/'+c).get();
+  if(existing.exists){toast('Ya existe un jugador con esa cédula',true);return;}
+  try{
+    await window.db.doc('players/'+c).set({
+      cedula:c, nombre:n, pos:document.getElementById('nj-pos').value,
+      numCamiseta:'', nombreCamiseta:n.split(' ')[0].toUpperCase(),
+      fechaNacimiento:'', fotoURL:'',
+      blocked:false, profileCompleted:false,
+      stats:{goals:0,assists:0,games:0,yellow:0,red:0,mins:0},
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await window.db.doc('aportes/'+c).set({pagos:[]},{merge:true});
+    document.getElementById('nj-ced').value='';
+    document.getElementById('nj-nom').value='';
+    toast(`Jugador registrado. Puede ingresar con: ${c} ✓`);
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+function adminEditPlayer(c){
+  window.db.doc('players/'+c).get().then(snap=>{
+    if(!snap.exists)return;
+    const p=snap.data();
+    showModal(`Editar — ${p.nombre||c}`,`
+      <div class="fg" style="margin-bottom:10px"><label>Identificación</label><input id="ep-ced" value="${p.cedula||c}" /></div>
+      <div class="fg" style="margin-bottom:10px"><label>Nombre completo</label><input id="ep-nom" value="${p.nombre||''}" /></div>
+      <div class="grid3" style="margin-bottom:10px;gap:10px">
+        <div class="fg"><label>Fecha nacimiento</label><input type="date" id="ep-fnac" value="${p.fechaNacimiento||''}" /></div>
+        <div class="fg"><label># Camiseta</label><input type="number" id="ep-num" value="${p.numCamiseta||''}" min="1" max="99"/></div>
+        <div class="fg"><label>Nombre camiseta</label><input id="ep-ncam" value="${p.nombreCamiseta||''}" maxlength="12"/></div>
+      </div>
+      <div class="fg" style="margin-bottom:14px"><label>Posición</label>
+        <select id="ep-pos"><option value="POR"${p.pos==='POR'?' selected':''}>Portero</option><option value="DEF"${p.pos==='DEF'?' selected':''}>Defensa</option><option value="MED"${p.pos==='MED'?' selected':''}>Mediocampista</option><option value="DEL"${p.pos==='DEL'?' selected':''}>Delantero</option></select>
+      </div>
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        <button class="btn ${p.blocked?'bg':'br_'}" onclick="toggleBlock('${c}',${!p.blocked})">${p.blocked?'🔓 Desbloquear':'🔒 Bloquear'}</button>
+        <button class="btn br_" onclick="adminDeletePlayer('${c}')">🗑️ Eliminar jugador</button>
+      </div>
+      <div class="factions">
+        <button class="btn bo" onclick="closeModal()">Cancelar</button>
+        <button class="btn bg" onclick="saveEditPlayer('${c}')">Guardar cambios</button>
+      </div>`);
+  });
+}
+
+async function saveEditPlayer(oldCed){
+  const newCed=document.getElementById('ep-ced').value.trim();
+  const nom=document.getElementById('ep-nom').value.trim();
+  if(!newCed||!nom){toast('Cédula y nombre son obligatorios',true);return;}
+  try{
+    const data={
+      cedula:newCed, nombre:nom,
+      fechaNacimiento:document.getElementById('ep-fnac').value,
+      numCamiseta:document.getElementById('ep-num').value,
+      nombreCamiseta:document.getElementById('ep-ncam').value.toUpperCase().trim(),
+      pos:document.getElementById('ep-pos').value,
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if(newCed!==oldCed){
+      // migrate document
+      const oldSnap=await window.db.doc('players/'+oldCed).get();
+      const oldAp=await window.db.doc('aportes/'+oldCed).get();
+      await window.db.doc('players/'+newCed).set({...oldSnap.data(),...data});
+      await window.db.doc('aportes/'+newCed).set(oldAp.exists?oldAp.data():{pagos:[]});
+      await window.db.doc('players/'+oldCed).delete();
+      await window.db.doc('aportes/'+oldCed).delete();
+    } else {
+      await window.db.doc('players/'+oldCed).update(data);
+    }
+    closeModal();toast('Jugador actualizado ✓');
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+async function toggleBlock(c,block){
+  try{
+    await window.db.doc('players/'+c).update({blocked:block});
+    closeModal();toast(block?'Jugador bloqueado':'Jugador desbloqueado ✓');
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+async function adminDeletePlayer(c){
+  if(!confirm(`¿Eliminar permanentemente este jugador y todos sus datos?`))return;
+  try{
+    await window.db.doc('players/'+c).delete();
+    await window.db.doc('aportes/'+c).delete();
+    closeModal();toast('Jugador eliminado');
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+// ── ADMIN: APORTES ────────────────────────────
+function adminAportes(){
+  document.getElementById('main-content').innerHTML=`
+    <div class="stitle">⬡ Aportes</div>
+    <div class="exbar"><button class="btn bb bsm" onclick="exportAportesExcel()">⬇ Excel aportes</button></div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="grid2">
+        <div class="fg"><label>Meta total de inscripción ($)</label><input id="meta-inp" type="number" placeholder="500000" /></div>
+        <div class="fg" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn bg" onclick="adminSaveMeta()">Guardar meta</button></div>
+      </div>
+    </div>
+    <div class="cajabox">
+      <div style="font-size:11px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Total recaudado</div>
+      <div class="cajatotal" id="cj-total">$0</div>
+      <div class="cajasub" id="cj-sub"></div>
+      <div style="margin-top:12px"><div class="pbar" style="height:10px"><div class="pfill paid-bar" id="cj-bar" style="width:0%"></div></div></div>
+      <div class="cajagrid">
+        <div class="cajamini"><div class="cajamval tgg" id="cj-p">0</div><div class="cajamlbl">Pagaron completo</div></div>
+        <div class="cajamini"><div class="cajamval tgy" id="cj-pa">0</div><div class="cajamlbl">Parcial</div></div>
+        <div class="cajamini"><div class="cajamval tgr" id="cj-d">0</div><div class="cajamlbl">Sin pagar</div></div>
+      </div>
+    </div>
+    <div id="ap-list"></div>`;
+
+  window.db.doc('config/team').get().then(d=>{if(d.exists&&d.data().meta)document.getElementById('meta-inp').value=d.data().meta||'';});
+
+  let players=[],aportes={};
+  const u1=window.db.collection('players').onSnapshot(s=>{players=s.docs.map(d=>({id:d.id,...d.data()}));renderApList(players,aportes,true);});
+  const u2=window.db.collection('aportes').onSnapshot(s=>{s.docs.forEach(d=>aportes[d.id]=d.data());renderApList(players,aportes,true);});
+  _uns.push(u1,u2);
+}
+
+async function adminSaveMeta(){
+  const m=+document.getElementById('meta-inp').value||0;
+  teamMeta=m;
+  await window.db.doc('config/team').set({meta:m},{merge:true});
+  toast('Meta guardada ✓');
+}
+
+function renderApList(players,aportes,isAdminView){
+  const el=document.getElementById('ap-list');if(!el)return;
+  if(!players.length){el.innerHTML='<div class="empty"><div class="empty-ico">💰</div><div>No hay jugadores</div></div>';updateCaja([],aportes);return;}
+  const cuota=teamMeta&&players.length?Math.ceil(teamMeta/players.length):0;
+  updateCaja(players,aportes);
+  el.innerHTML=players.map(p=>{
+    const c=p.cedula||p.id;
+    const pgs=(aportes[c]||{pagos:[]}).pagos||[];
+    const total=pgs.reduce((s,x)=>s+(+x.monto||0),0);
+    const falta=cuota?Math.max(0,cuota-total):0;
+    const st=!cuota?'ok':total<=0?'none':total>=cuota?'paid':'partial';
+    const pct=cuota?Math.min(100,Math.round(total/cuota*100)):0;
+    const bCls={paid:'paid-bar',partial:'part-bar',none:'none-bar',ok:'paid-bar'}[st];
+    const aCl={paid:'var(--g)',partial:'var(--y)',none:'var(--r)',ok:'var(--mt)'}[st];
+    const dCls={paid:'sdot-g',partial:'sdot-y',none:'sdot-r',ok:'sdot-g'}[st];
+    return `<div class="arow">
+      <div class="aleft">
+        <div class="sdot ${dCls}"></div>
+        <div class="aav" style="background:${clr(c)}">
+          ${p.fotoURL?`<img src="${p.fotoURL}">`:''}${!p.fotoURL?ini(p.nombre||c):''}
+        </div>
+        <div style="min-width:0">
+          <div class="aname">${p.nombre||c} <span style="font-family:'Bebas Neue',sans-serif;color:var(--d3);font-size:15px">#${p.numCamiseta||'—'}</span></div>
+          <div class="ameta">${cuota?`Cuota: ${fmt(cuota)} · Falta: ${fmt(falta)}`:'Sin meta definida'}</div>
+          ${cuota?`<div class="pbar"><div class="pfill ${bCls}" style="width:${pct}%"></div></div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <div class="aamount" style="color:${aCl}">${fmt(total)}</div>
+        ${isAdminView?`<button class="btn bg bsm" onclick='openAporteModal("${c}","${p.nombre||c}")'>+ Pago</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateCaja(players,aportes){
+  const cuota=teamMeta&&players.length?Math.ceil(teamMeta/players.length):0;
+  const totalG=players.reduce((s,p)=>{const c=p.cedula||p.id;const pgs=(aportes[c]||{pagos:[]}).pagos||[];return s+pgs.reduce((a,x)=>a+(+x.monto||0),0);},0);
+  const pct=teamMeta?Math.min(100,Math.round(totalG/teamMeta*100)):0;
+  const t=document.getElementById('cj-total');if(t)t.textContent=fmt(totalG);
+  const s=document.getElementById('cj-sub');if(s)s.textContent=teamMeta?`Meta: ${fmt(teamMeta)} · ${pct}% completado`:'Define una meta arriba';
+  const b=document.getElementById('cj-bar');if(b)b.style.width=pct+'%';
+  const cp=document.getElementById('cj-p');if(cp)cp.textContent=players.filter(p=>{const c=p.cedula||p.id;const t=(aportes[c]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;return cuota&&t>=cuota;}).length;
+  const cpa=document.getElementById('cj-pa');if(cpa)cpa.textContent=players.filter(p=>{const c=p.cedula||p.id;const t=(aportes[c]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;return cuota&&t>0&&t<cuota;}).length;
+  const cd=document.getElementById('cj-d');if(cd)cd.textContent=players.filter(p=>{const c=p.cedula||p.id;const t=(aportes[c]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;return cuota&&t<=0;}).length;
+}
+
+function openAporteModal(c,nombre){
+  window.db.doc('aportes/'+c).get().then(snap=>{
+    const pgs=snap.exists?snap.data().pagos||[]:[];
+    const hist=pgs.length?`<div style="max-height:150px;overflow-y:auto;margin-bottom:14px">${pgs.map((pg,i)=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--d2);border-radius:6px;margin-bottom:4px;font-size:12px">
+        <div><span style="font-weight:600;color:var(--g)">${fmt(pg.monto)}</span> <span style="color:var(--mt)">· ${pg.metodo} · ${pg.fecha}</span>${pg.nota?` · <em style="color:var(--mt)">${pg.nota}</em>`:''}</div>
+        <button onclick="delPago('${c}',${i})" style="background:transparent;border:none;color:var(--r);cursor:pointer;padding:2px 6px">✕</button>
+      </div>`).join('')}</div>`:'';
+    showModal(`Aporte — ${nombre}`,`
+      <div class="fg" style="margin-bottom:11px"><label>Monto ($) *</label><input id="am-m" type="number" min="0" placeholder="50000"/></div>
+      <div class="grid2" style="margin-bottom:11px;gap:10px">
+        <div class="fg"><label>Fecha</label><input id="am-f" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
+        <div class="fg"><label>Método</label><select id="am-met"><option>Efectivo</option><option>Nequi</option><option>Daviplata</option><option>Transferencia</option><option>Otro</option></select></div>
+      </div>
+      <div class="fg" style="margin-bottom:14px"><label>Nota (opcional)</label><input id="am-n" placeholder="Ej: primer abono"/></div>
+      ${hist}
+      <div class="factions">
+        <button class="btn bo" onclick="closeModal()">Cancelar</button>
+        <button class="btn bg" onclick="savePago('${c}')">Registrar pago</button>
+      </div>`);
+  });
+}
+
+async function savePago(c){
+  const m=+document.getElementById('am-m').value;
+  if(!m||m<=0){toast('Monto inválido',true);return;}
+  try{
+    const snap=await window.db.doc('aportes/'+c).get();
+    const pgs=snap.exists?snap.data().pagos||[]:[];
+    pgs.push({monto:m,fecha:document.getElementById('am-f').value,metodo:document.getElementById('am-met').value,nota:document.getElementById('am-n').value});
+    await window.db.doc('aportes/'+c).set({pagos:pgs});
+    closeModal();toast('Pago registrado ✓');
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+async function delPago(c,i){
+  if(!confirm('¿Eliminar este pago?'))return;
+  const snap=await window.db.doc('aportes/'+c).get();
+  const pgs=snap.exists?snap.data().pagos||[]:[];
+  pgs.splice(i,1);
+  await window.db.doc('aportes/'+c).set({pagos:pgs});
+  toast('Pago eliminado');closeModal();
+}
+
+// ── ADMIN: PARTIDOS ───────────────────────────
+function adminPartidos(){
+  document.getElementById('main-content').innerHTML=`
+    <div class="stitle">⬡ Partidos</div>
+    <div class="card">
+      <div class="grid2">
+        <div class="fg"><label>Rival *</label><input id="pm-r" placeholder="Nombre del rival"/></div>
+        <div class="fg"><label>Fecha</label><input id="pm-d" type="date"/></div>
+      </div>
+      <div class="grid3" style="margin-top:10px">
+        <div class="fg"><label>Goles nuestros</label><input id="pm-gf" type="number" min="0" placeholder="0"/></div>
+        <div class="fg"><label>Goles rival</label><input id="pm-ga" type="number" min="0" placeholder="0"/></div>
+        <div class="fg"><label>Tipo</label><select id="pm-t"><option>Liga</option><option>Copa</option><option>Amistoso</option><option>Torneo</option></select></div>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <div class="fg"><label>Cancha</label><input id="pm-v" placeholder="Nombre de la cancha"/></div>
+        <div class="fg"><label>Condición</label><select id="pm-h"><option value="LOCAL">Local</option><option value="VISITANTE">Visitante</option><option value="NEUTRAL">Neutral</option></select></div>
+      </div>
+      <div class="fg" style="margin-top:10px"><label>Notas</label><textarea id="pm-n" rows="2" style="resize:vertical"></textarea></div>
+      <div class="factions"><button class="btn bg" onclick="adminAddMatch()">+ Registrar partido</button></div>
+    </div>
+    <div id="sm-grid" style="display:none">
+      <div class="sgrid">
+        <div class="scard"><div class="sval tgg" id="sm-pts">0</div><div class="slbl">Puntos</div></div>
+        <div class="scard"><div class="sval tgg" id="sm-w">0</div><div class="slbl">Victorias</div></div>
+        <div class="scard"><div class="sval tgy" id="sm-d">0</div><div class="slbl">Empates</div></div>
+        <div class="scard"><div class="sval tgr" id="sm-l">0</div><div class="slbl">Derrotas</div></div>
+      </div>
+    </div>
+    <div class="mlist" id="m-list"></div>`;
+
+  const u=window.db.collection('matches').orderBy('createdAt','desc').onSnapshot(s=>{
+    const ms=s.docs.map(d=>({id:d.id,...d.data()}));
+    renderMatchList(ms);
+  });
+  _uns.push(u);
+}
+
+function renderMatchList(ms){
+  const ml=document.getElementById('m-list'),sg=document.getElementById('sm-grid');
+  if(!ml||!sg)return;
+  if(!ms.length){ml.innerHTML='<div class="empty"><div class="empty-ico">🏆</div><div>No hay partidos</div></div>';sg.style.display='none';return;}
+  sg.style.display='';
+  const w=ms.filter(m=>m.result==='V').length,d=ms.filter(m=>m.result==='E').length,l=ms.filter(m=>m.result==='D').length;
+  document.getElementById('sm-pts').textContent=w*3+d;
+  document.getElementById('sm-w').textContent=w;document.getElementById('sm-d').textContent=d;document.getElementById('sm-l').textContent=l;
+  const rL={V:'rw',D:'rl',E:'rd'},rT={V:'Victoria',D:'Derrota',E:'Empate'};
+  ml.innerHTML=ms.map(m=>`<div class="mitem">
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;gap:10px;font-weight:500;flex-wrap:wrap">
+        <span style="font-weight:600">${teamName}</span>
+        <span class="mscore">${m.gf} - ${m.ga}</span>
+        <span>${m.rival}</span>
+      </div>
+      <div style="font-size:11px;color:var(--mt);margin-top:3px">${m.date||''} · ${m.type||''} · ${m.home||''}${m.venue?' · '+m.venue:''}</div>
+      ${m.notes?`<div style="font-size:11px;color:var(--mt);margin-top:3px">${m.notes}</div>`:''}
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+      <span class="rbadge ${rL[m.result]||'rd'}">${rT[m.result]||'—'}</span>
+      <button class="btn br_" onclick="adminDelMatch('${m.id}')">✕</button>
+    </div>
+  </div>`).join('');
+}
+
+async function adminAddMatch(){
+  const r=document.getElementById('pm-r').value.trim();
+  if(!r){toast('Ingresa el rival',true);return;}
+  const gf=+document.getElementById('pm-gf').value||0,ga=+document.getElementById('pm-ga').value||0;
+  try{
+    await window.db.collection('matches').add({rival:r,date:document.getElementById('pm-d').value||new Date().toISOString().split('T')[0],gf,ga,result:gf>ga?'V':gf<ga?'D':'E',type:document.getElementById('pm-t').value,venue:document.getElementById('pm-v').value,home:document.getElementById('pm-h').value,notes:document.getElementById('pm-n').value,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    ['pm-r','pm-gf','pm-ga','pm-v','pm-n'].forEach(id=>document.getElementById(id).value='');
+    toast('Partido registrado ✓');
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+async function adminDelMatch(id){
+  if(!confirm('¿Eliminar este partido?'))return;
+  await window.db.doc('matches/'+id).delete();toast('Partido eliminado');
+}
+
+// ── ADMIN: ESTADÍSTICAS ───────────────────────
+function adminEstadisticas(){
+  document.getElementById('main-content').innerHTML=`
+    <div class="stitle">⬡ Estadísticas</div>
+    <div class="exbar"><button class="btn bb bsm" onclick="exportEstadisticasExcel()">⬇ Excel estadísticas</button></div>
+    <div id="st-wrap"></div>`;
+  const u=window.db.collection('players').onSnapshot(s=>{
+    const pl=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.stats?.goals||0)-(a.stats?.goals||0));
+    const el=document.getElementById('st-wrap');if(!el)return;
+    if(!pl.length){el.innerHTML='<div class="empty"><div class="empty-ico">📊</div><div>Sin datos</div></div>';return;}
+    el.innerHTML=`<div class="card" style="overflow-x:auto"><table class="stbl">
+      <thead><tr><th>#</th><th>Jugador</th><th>Pos</th><th>PJ</th><th>⚽ Goles</th><th>🎯 Asist</th><th>🟡</th><th>🔴</th><th>⏱ Min</th><th></th></tr></thead>
+      <tbody>${pl.map((p,i)=>`<tr>
+        <td style="color:var(--mt);font-size:12px">${i+1}</td>
+        <td><div style="display:flex;align-items:center;gap:8px">
+          <div style="width:26px;height:26px;border-radius:50%;background:${clr(p.cedula||p.id)};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;overflow:hidden;flex-shrink:0">
+            ${p.fotoURL?`<img src="${p.fotoURL}" style="width:100%;height:100%;object-fit:cover">`:ini(p.nombre||p.id)}
+          </div><span>${p.nombre||p.id}</span></div></td>
+        <td><span class="ppos pos-${p.pos||'MED'}" style="font-size:10px">${p.pos||'MED'}</span></td>
+        <td>${p.stats?.games||0}</td>
+        <td style="font-weight:600;color:var(--g)">${p.stats?.goals||0}</td>
+        <td>${p.stats?.assists||0}</td>
+        <td style="color:var(--y)">${p.stats?.yellow||0}</td>
+        <td style="color:var(--r)">${p.stats?.red||0}</td>
+        <td style="color:var(--mt)">${p.stats?.mins||0}</td>
+        <td><button class="btn bo bsm" onclick="openEditStats('${p.cedula||p.id}','${p.nombre||p.id}',${p.stats?.goals||0},${p.stats?.assists||0},${p.stats?.games||0},${p.stats?.yellow||0},${p.stats?.red||0},${p.stats?.mins||0})">Editar</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+  });
+  _uns.push(u);
+}
+
+function openEditStats(c,nombre,goals,assists,games,yellow,red,mins){
+  showModal(`Estadísticas — ${nombre}`,`
+    <div class="grid3">
+      <div class="fg"><label>Goles ⚽</label><input id="es-g" type="number" min="0" value="${goals}"/></div>
+      <div class="fg"><label>Asistencias 🎯</label><input id="es-a" type="number" min="0" value="${assists}"/></div>
+      <div class="fg"><label>Partidos</label><input id="es-pj" type="number" min="0" value="${games}"/></div>
+    </div>
+    <div class="grid3" style="margin-top:10px">
+      <div class="fg"><label>Amarillas 🟡</label><input id="es-y" type="number" min="0" value="${yellow}"/></div>
+      <div class="fg"><label>Rojas 🔴</label><input id="es-r" type="number" min="0" value="${red}"/></div>
+      <div class="fg"><label>Minutos ⏱</label><input id="es-m" type="number" min="0" value="${mins}"/></div>
+    </div>
+    <div class="factions">
+      <button class="btn bo" onclick="closeModal()">Cancelar</button>
+      <button class="btn bg" onclick="saveStats('${c}')">Guardar</button>
+    </div>`);
+}
+
+async function saveStats(c){
+  try{
+    await window.db.doc('players/'+c).update({stats:{
+      goals:+document.getElementById('es-g').value||0,assists:+document.getElementById('es-a').value||0,
+      games:+document.getElementById('es-pj').value||0,yellow:+document.getElementById('es-y').value||0,
+      red:+document.getElementById('es-r').value||0,mins:+document.getElementById('es-m').value||0
+    }});
+    closeModal();toast('Estadísticas guardadas ✓');
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+// ── ADMIN: EQUIPO ─────────────────────────────
+function adminEquipo(){
+  window.db.doc('config/team').get().then(snap=>{
+    const t=snap.exists?snap.data():{};
+    selForm=t.formation||'';
+    document.getElementById('main-content').innerHTML=`
+      <div class="stitle">⬡ Información del Equipo</div>
+      <div class="card">
+        <div class="grid2">
+          <div class="fg"><label>Nombre del equipo</label><input id="eq-n" value="${t.name||''}" placeholder="Mi Equipo FC"/></div>
+          <div class="fg"><label>Ciudad</label><input id="eq-c" value="${t.city||''}" placeholder="Ciudad"/></div>
+        </div>
+        <div class="grid3" style="margin-top:10px">
+          <div class="fg"><label>Año fundación</label><input id="eq-y" value="${t.year||''}" type="number"/></div>
+          <div class="fg"><label>Liga / División</label><input id="eq-l" value="${t.league||''}"/></div>
+          <div class="fg"><label>Entrenador</label><input id="eq-co" value="${t.coach||''}"/></div>
+        </div>
+        <div style="margin-top:14px">
+          <div style="font-size:11px;color:var(--mt);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Formación táctica</div>
+          <div class="pill-row" id="form-pills">
+            ${['4-3-3','4-4-2','3-5-2','4-2-3-1','5-3-2'].map(f=>`<div class="pill${selForm===f?' sel':''}" onclick="pickForm(this,'${f}')">${f}</div>`).join('')}
+          </div>
+        </div>
+        <div class="fg" style="margin-top:14px"><label>Historia / Descripción</label><textarea id="eq-bio" rows="3" style="resize:vertical">${t.bio||''}</textarea></div>
+        <div class="factions"><button class="btn bg" onclick="saveTeamInfo()">Guardar</button></div>
+      </div>`;
+  });
+}
+
+function pickForm(el,v){document.querySelectorAll('#form-pills .pill').forEach(p=>p.classList.remove('sel'));el.classList.add('sel');selForm=v;}
+
+async function saveTeamInfo(){
+  try{
+    await window.db.doc('config/team').set({
+      name:document.getElementById('eq-n').value.trim(),city:document.getElementById('eq-c').value,
+      year:document.getElementById('eq-y').value,league:document.getElementById('eq-l').value,
+      coach:document.getElementById('eq-co').value,bio:document.getElementById('eq-bio').value,
+      formation:selForm,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    teamName=document.getElementById('eq-n').value.trim()||teamName;
+    toast('Información guardada ✓');
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+// ── MODAL ─────────────────────────────────────
+function showModal(title,body){
+  document.getElementById('modal-wrap').innerHTML=`
+    <div class="mov" onclick="closeModalOv(event)">
+      <div class="mbox" onclick="event.stopPropagation()">
+        <div class="mtitle">${title}</div>${body}
+      </div>
+    </div>`;}
+function closeModal(){document.getElementById('modal-wrap').innerHTML='';}
+function closeModalOv(e){if(e.target===e.currentTarget)closeModal();}
+
+// ── EXCEL EXPORTS ─────────────────────────────
+function tblExcel(html,fn){
+  const a=document.createElement('a');
+  a.href='data:application/vnd.ms-excel;base64,'+btoa(unescape(encodeURIComponent(`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body>${html}</body></html>`)));
+  a.download=fn;a.click();
+}
+
+async function exportJugadoresExcel(){
+  const pl=(await window.db.collection('players').get()).docs.map(d=>({id:d.id,...d.data()}));
+  if(!pl.length){toast('Sin jugadores',true);return;}
+  let t=`<table border="1"><tr style="background:#2ecc71;color:#fff;font-weight:bold"><th>#</th><th>Nombre</th><th>Cédula</th><th>Posición</th><th>#Camiseta</th><th>Nombre camiseta</th><th>Nacimiento</th><th>PJ</th><th>Goles</th><th>Asistencias</th><th>Estado</th></tr>`;
+  pl.forEach((p,i)=>t+=`<tr><td>${i+1}</td><td>${p.nombre||''}</td><td>${p.cedula||p.id}</td><td>${p.pos||''}</td><td>${p.numCamiseta||''}</td><td>${p.nombreCamiseta||''}</td><td>${p.fechaNacimiento||''}</td><td>${p.stats?.games||0}</td><td>${p.stats?.goals||0}</td><td>${p.stats?.assists||0}</td><td>${p.blocked?'Bloqueado':'Activo'}</td></tr>`);
+  t+='</table>';tblExcel(t,teamName+'_jugadores.xls');toast('Excel descargado ✓');
+}
+
+async function exportAportesExcel(){
+  const [ps,as]=await Promise.all([window.db.collection('players').get(),window.db.collection('aportes').get()]);
+  const pl=ps.docs.map(d=>({id:d.id,...d.data()}));
+  const ap={};as.docs.forEach(d=>ap[d.id]=d.data());
+  const cuota=teamMeta&&pl.length?Math.ceil(teamMeta/pl.length):0;
+  let t=`<table border="1"><tr style="background:#2ecc71;color:#fff;font-weight:bold"><th>Jugador</th><th>Cédula</th><th>Total aportado</th>${cuota?'<th>Cuota</th><th>Falta</th><th>Estado</th>':''}</tr>`;
+  let tot=0;
+  pl.forEach(p=>{const c=p.cedula||p.id,pgs=(ap[c]||{pagos:[]}).pagos||[],t2=pgs.reduce((s,x)=>s+(+x.monto||0),0);tot+=t2;const e=!cuota?'—':t2>=cuota?'Completo':t2>0?'Parcial':'Sin pagar';t+=`<tr><td>${p.nombre||c}</td><td>${c}</td><td>${t2}</td>${cuota?`<td>${cuota}</td><td>${Math.max(0,cuota-t2)}</td><td>${e}</td>`:''}</tr>`;});
+  t+=`<tr style="font-weight:bold;background:#f0f0f0"><td colspan="2">TOTAL RECAUDADO</td><td>${tot}</td>${cuota?`<td></td><td></td><td></td>`:''}</tr></table>`;
+  tblExcel(t,teamName+'_aportes.xls');toast('Excel descargado ✓');
+}
+
+async function exportEstadisticasExcel(){
+  const pl=(await window.db.collection('players').get()).docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.stats?.goals||0)-(a.stats?.goals||0));
+  let t=`<table border="1"><tr style="background:#2ecc71;color:#fff;font-weight:bold"><th>#</th><th>Jugador</th><th>Cédula</th><th>Posición</th><th>PJ</th><th>Goles</th><th>Asistencias</th><th>Amarillas</th><th>Rojas</th><th>Minutos</th></tr>`;
+  pl.forEach((p,i)=>t+=`<tr><td>${i+1}</td><td>${p.nombre||''}</td><td>${p.cedula||p.id}</td><td>${p.pos||''}</td><td>${p.stats?.games||0}</td><td>${p.stats?.goals||0}</td><td>${p.stats?.assists||0}</td><td>${p.stats?.yellow||0}</td><td>${p.stats?.red||0}</td><td>${p.stats?.mins||0}</td></tr>`);
+  t+='</table>';tblExcel(t,teamName+'_estadisticas.xls');toast('Excel descargado ✓');
+}
+</script>
+</body>
+</html>
