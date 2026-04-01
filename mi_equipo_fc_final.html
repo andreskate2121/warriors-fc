@@ -448,7 +448,11 @@ function startApp(){
     CU=u;
     try{const d=await db_.doc('config/admin').get();adminUID=d.exists?d.data().uid:null;}catch(e){}
     try{const d=await db_.doc('config/team').get();if(d.exists&&d.data().name)teamName=d.data().name;}catch(e){}
-    if(u.uid===adminUID){role='admin';ced='admin';setupAdmin();}
+    // Also check by email as fallback for admin
+    if(!adminUID){
+      try{const d=await db_.doc('config/admin').get();adminUID=d.exists?d.data().uid:null;}catch(e){}
+    }
+    if(u.uid===adminUID || u.email==='andreskate2121@gmail.com'){role='admin';ced='admin';setupAdmin();}
     else{
       role='player';ced=u.email.replace('@jugador.fc','');
       const snap=await db_.doc('players/'+ced).get();
