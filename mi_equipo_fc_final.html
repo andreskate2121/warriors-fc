@@ -58,11 +58,11 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 @keyframes sp{to{transform:rotate(360deg);}}
 
 /* LOGIN */
-#scr-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at top,#1a2e1a,var(--d0) 65%);}
+#scr-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:url('https://res.cloudinary.com/dwef0bowz/image/upload/qscmzhoaxnf7rwwfbovb.jpg') center/cover no-repeat;position:relative;}#scr-login::before{content:'';position:absolute;inset:0;background:rgba(0,0,0,0.65);z-index:0;}#scr-login .lbox{position:relative;z-index:1;}
 .lbox{width:100%;max-width:360px;}
 .llogo{text-align:center;margin-bottom:28px;}
-.llogo .ico{width:68px;height:68px;background:var(--g);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 12px;}
-.llogo h1{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:3px;}
+.llogo .ico{width:110px;height:110px;background:transparent;border-radius:0;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;}
+.llogo h1{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:3px;text-shadow:0 2px 8px rgba(0,0,0,0.8);}
 .llogo p{font-size:12px;color:var(--mt);}
 .lcard{background:var(--d1);border:1px solid var(--br);border-radius:14px;padding:22px;}
 .lcard h2{font-size:14px;font-weight:500;color:var(--mt);text-align:center;margin-bottom:18px;}
@@ -77,7 +77,7 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 .ltoggle span{color:var(--g);cursor:pointer;font-weight:600;}
 
 /* FIRST TIME */
-#scr-first{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at top,#1a2e1a,var(--d0) 65%);}
+#scr-first{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:url('https://res.cloudinary.com/dwef0bowz/image/upload/qscmzhoaxnf7rwwfbovb.jpg') center/cover no-repeat;}
 .fbox{width:100%;max-width:400px;}
 .fbox .titulo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--g);text-align:center;margin-bottom:6px;}
 .fbox .subtit{font-size:13px;color:var(--mt);text-align:center;margin-bottom:22px;}
@@ -245,21 +245,8 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 <div id="scr-login" style="display:none">
   <div class="lbox">
     <div class="llogo">
-      <div class="ico" id="l-logo-wrap" style="width:90px;height:90px;background:transparent;border-radius:50%;overflow:hidden;">
-        <svg id="l-logo-svg" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg" width="90" height="90">
-          <circle cx="45" cy="45" r="45" fill="#2ecc71"/>
-          <text x="45" y="32" font-family="Arial Black,sans-serif" font-size="11" font-weight="900" fill="white" text-anchor="middle" letter-spacing="1">WARRIORS</text>
-          <circle cx="45" cy="55" r="18" fill="white" opacity="0.95"/>
-          <circle cx="45" cy="55" r="18" fill="none" stroke="#2ecc71" stroke-width="1.5"/>
-          <polygon points="45,42 47,50 55,50 49,55 51,63 45,58 39,63 41,55 35,50 43,50" fill="#0d1117" opacity="0.15"/>
-          <circle cx="45" cy="55" r="5" fill="#0d1117" opacity="0.7"/>
-          <circle cx="37" cy="49" r="3" fill="#0d1117" opacity="0.5"/>
-          <circle cx="53" cy="49" r="3" fill="#0d1117" opacity="0.5"/>
-          <circle cx="37" cy="61" r="3" fill="#0d1117" opacity="0.5"/>
-          <circle cx="53" cy="61" r="3" fill="#0d1117" opacity="0.5"/>
-          <text x="45" y="82" font-family="Arial Black,sans-serif" font-size="9" font-weight="900" fill="white" text-anchor="middle" letter-spacing="2" opacity="0.9">FC</text>
-        </svg>
-        <img id="l-logo-img" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:50%;" />
+      <div class="ico" id="l-logo-wrap" style="width:110px;height:110px;background:transparent;border-radius:0;overflow:visible;">
+        <img id="l-logo-img" src="https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg" style="width:110px;height:110px;object-fit:contain;border-radius:0;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.8));" onerror="this.style.display='none'" />
       </div>
       <h1 id="l-teamname">WARRIORS FC</h1>
       <p id="l-team-slogan">Sistema de gestión del equipo</p>
@@ -823,7 +810,10 @@ function renderAdminTabs(t){
 function adminJugadores(){
   document.getElementById('main-content').innerHTML=`
     <div class="stitle">⬡ Plantilla</div>
-    <div class="exbar"><button class="btn bb bsm" onclick="exportJugadoresExcel()">⬇ Excel jugadores</button></div>
+    <div class="exbar">
+      <button class="btn bb bsm" onclick="exportJugadoresExcel()">⬇ Jugadores + Aportes</button>
+      <button class="btn bb bsm" onclick="exportEstadisticasExcel()">⬇ Estadísticas</button>
+    </div>
     <div class="card">
       <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--mt)">Registrar nuevo jugador</div>
       <div class="grid3">
@@ -960,7 +950,7 @@ async function adminDeletePlayer(c){
 function adminAportes(){
   document.getElementById('main-content').innerHTML=`
     <div class="stitle">⬡ Aportes</div>
-    <div class="exbar"><button class="btn bb bsm" onclick="exportAportesExcel()">⬇ Excel aportes</button></div>
+    <div class="exbar"><button class="btn bb bsm" onclick="exportJugadoresExcel()">⬇ Jugadores + Aportes (.xlsx)</button></div>
     <div class="card" style="margin-bottom:14px">
       <div class="grid2">
         <div class="fg"><label>Meta total de inscripción ($)</label><input id="meta-inp" type="number" placeholder="500000" /></div>
@@ -1175,7 +1165,7 @@ async function adminDelMatch(id){
 function adminEstadisticas(){
   document.getElementById('main-content').innerHTML=`
     <div class="stitle">⬡ Estadísticas</div>
-    <div class="exbar"><button class="btn bb bsm" onclick="exportEstadisticasExcel()">⬇ Excel estadísticas</button></div>
+    <div class="exbar"><button class="btn bb bsm" onclick="exportEstadisticasExcel()">⬇ Estadísticas (.xlsx)</button></div>
     <div id="st-wrap"></div>`;
   const u=window.db.collection('players').onSnapshot(s=>{
     const pl=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.stats?.goals||0)-(a.stats?.goals||0));
@@ -1283,8 +1273,7 @@ async function uploadLogo(input){
 
 function updateLoginLogo(url){
   const img=document.getElementById('l-logo-img');
-  const svg=document.getElementById('l-logo-svg');
-  if(img&&url){img.src=url;img.style.display='block';if(svg)svg.style.display='none';}
+  if(img&&url){img.src=url;img.style.display='block';}
 }
 
 function pickForm(el,v){document.querySelectorAll('#form-pills .pill').forEach(p=>p.classList.remove('sel'));el.classList.add('sel');selForm=v;}
@@ -1320,11 +1309,29 @@ function closeModalOv(e){if(e.target===e.currentTarget)closeModal();}
 
 // ── EXCEL EXPORTS ─────────────────────────────
 function tblExcel(rows, fn){
-  // rows = array of arrays [ [col1, col2, ...], ... ]
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  XLSX.utils.book_append_sheet(wb, ws, 'Datos');
-  XLSX.writeFile(wb, fn.replace('.xls','.xlsx'));
+  try{
+    if(typeof XLSX==='undefined') throw new Error('XLSX no cargó');
+    const wb=XLSX.utils.book_new();
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    // Style header row
+    const range=XLSX.utils.decode_range(ws['!ref']);
+    for(let C=range.s.c;C<=range.e.c;C++){
+      const cell=ws[XLSX.utils.encode_cell({r:0,c:C})];
+      if(cell) cell.s={fill:{fgColor:{rgb:'2ECC71'}},font:{bold:true,color:{rgb:'FFFFFF'}}};
+    }
+    XLSX.utils.book_append_sheet(wb,ws,'Warriors FC');
+    XLSX.writeFile(wb,fn.replace('.xls','.xlsx'));
+    toast('Archivo descargado ✓');
+  }catch(e){
+    console.error('XLSX error:',e);
+    // Fallback: CSV download
+    const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a=document.createElement('a');
+    a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+    a.download=fn.replace('.xlsx','.csv').replace('.xls','.csv');
+    a.click();
+    toast('Descargado como CSV (Excel no disponible)');
+  }
 }
 
 async function exportJugadoresExcel(){
