@@ -58,10 +58,10 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 @keyframes sp{to{transform:rotate(360deg);}}
 
 /* LOGIN */
-#scr-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:url('https://res.cloudinary.com/dwef0bowz/image/upload/qscmzhoaxnf7rwwfbovb.jpg') center/cover no-repeat;position:relative;}#scr-login::before{content:'';position:absolute;inset:0;background:rgba(0,0,0,0.65);z-index:0;}#scr-login .lbox{position:relative;z-index:1;}
+#scr-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:url('https://res.cloudinary.com/dwef0bowz/image/upload/qscmzhoaxnf7rwwfbovb.jpg') center/cover no-repeat;position:relative;}#scr-login::before{content:'';position:absolute;inset:0;background:rgba(0,0,0,0);z-index:0;}#scr-login .lbox{position:relative;z-index:1;}
 .lbox{width:100%;max-width:360px;}
 .llogo{text-align:center;margin-bottom:28px;}
-.llogo .ico{width:110px;height:110px;background:transparent;border-radius:0;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;}
+.llogo .ico{width:110px;height:110px;background:transparent;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;overflow:hidden;}
 .llogo h1{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:3px;text-shadow:0 2px 8px rgba(0,0,0,0.8);}
 .llogo p{font-size:12px;color:var(--mt);}
 .lcard{background:var(--d1);border:1px solid var(--br);border-radius:14px;padding:22px;}
@@ -245,8 +245,8 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 <div id="scr-login" style="display:none">
   <div class="lbox">
     <div class="llogo">
-      <div class="ico" id="l-logo-wrap" style="width:110px;height:110px;background:transparent;border-radius:0;overflow:visible;">
-        <img id="l-logo-img" src="https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg" style="width:110px;height:110px;object-fit:contain;border-radius:0;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.8));" onerror="this.style.display='none'" />
+      <div class="ico" id="l-logo-wrap" style="width:110px;height:110px;background:transparent;border-radius:50%;overflow:hidden;border:3px solid rgba(46,204,113,0.8);box-shadow:0 0 20px rgba(46,204,113,0.4);">
+        <img id="l-logo-img" src="https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" />
       </div>
       <h1 id="l-teamname">WARRIORS FC</h1>
       <p id="l-team-slogan">Sistema de gestión del equipo</p>
