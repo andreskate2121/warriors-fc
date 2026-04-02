@@ -586,6 +586,15 @@ function startApp(){
   // assign globals
   window.auth=auth_;window.db=db_;window.stor=stor_;
   // trigger auth listener
+  // Timeout fallback - if Firebase doesn't respond in 8 seconds
+  setTimeout(()=>{
+    const load=document.getElementById('scr-load');
+    if(load&&load.style.display!=='none'){
+      load.style.display='none';
+      document.getElementById('scr-login').style.display='flex';
+    }
+  },8000);
+
   auth_.onAuthStateChanged(async u=>{
     hide('scr-load');
     if(!u){document.getElementById('scr-login').style.display='flex';
@@ -952,8 +961,8 @@ function renderPlayerPerfil(){
         <div class="chips">
           <span class="chip cg">⚽ ${p.pos||'MED'}</span>
           <span class="chip cb">🪪 ${p.cedula||ced}</span>
-          ${p.fechaNacimiento?`<span class="chip cy">🎂 ${p.fechaNacimiento}</span>`:''}
-          ${p.fechaNacimiento?`<span class="chip" style="background:rgba(155,89,182,.2);color:#9b59b6;">👤 ${calcEdad(p.fechaNacimiento)}</span>`:''}
+          ${p.fechaNacimiento?'<span class="chip cy">🎂 '+p.fechaNacimiento+'</span>':''}
+          ${p.fechaNacimiento?'<span class="chip" style="background:rgba(155,89,182,.2);color:#9b59b6;">👤 '+calcEdad(p.fechaNacimiento)+'</span>':''}
         </div>
       </div>
     </div>
@@ -1181,7 +1190,7 @@ function renderPGrid(players){
       <div class="pname">${p.nombre||'Sin nombre'}</div>
       <span class="ppos pos-${p.pos||'MED'}">${p.pos||'MED'}</span>
       <div class="pced">${c}</div>
-      ${p.fechaNacimiento?`<div style="font-size:10px;color:var(--gold);margin-top:2px;">👤 ${calcEdad(p.fechaNacimiento)}</div>`:''}
+      ${p.fechaNacimiento?'<div style="font-size:10px;color:var(--gold);margin-top:2px;">👤 '+calcEdad(p.fechaNacimiento)+'</div>':''}
       ${!p.profileCompleted?`<div style="font-size:10px;color:var(--y);margin-top:4px">⏳ Pendiente de registro</div>`:''}
     </div>`;
   }).join('');
