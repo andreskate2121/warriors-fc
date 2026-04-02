@@ -1088,9 +1088,9 @@ function adminAportes(){
       <div class="cajasub" id="cj-sub"></div>
       <div style="margin-top:12px"><div class="pbar" style="height:10px"><div class="pfill paid-bar" id="cj-bar" style="width:0%"></div></div></div>
       <div class="cajagrid">
-        <div class="cajamini"><div class="cajamval tgg" id="cj-p">0</div><div class="cajamlbl">Pagaron completo</div></div>
-        <div class="cajamini"><div class="cajamval tgy" id="cj-pa">0</div><div class="cajamlbl">Parcial</div></div>
-        <div class="cajamini"><div class="cajamval tgr" id="cj-d">0</div><div class="cajamlbl">Sin pagar</div></div>
+        <div class="cajamini"><div class="cajamval tgg" id="cj-p">0</div><div class="cajamlbl">Con abonos</div></div>
+        <div class="cajamini"><div class="cajamval tgy" id="cj-pa">0</div><div class="cajamlbl">Falta ($)</div></div>
+        <div class="cajamini"><div class="cajamval tgr" id="cj-d">0</div><div class="cajamlbl">Sin abonar</div></div>
       </div>
     </div>
     <div id="ap-list"></div>`;
@@ -1112,52 +1112,55 @@ async function adminSaveMeta(){
 
 function renderApList(players,aportes,isAdminView){
   const el=document.getElementById('ap-list');if(!el)return;
-  // Show mini caja for player view
   const miniCaja=document.getElementById('cj-mini');
   if(miniCaja)miniCaja.style.display='';
   if(!players.length){el.innerHTML='<div class="empty"><div class="empty-ico">💰</div><div>No hay jugadores</div></div>';updateCaja([],aportes);return;}
-  const cuota=teamMeta&&players.length?Math.ceil(teamMeta/players.length):0;
-  updateCaja(players,aportes);
   el.innerHTML=players.map(p=>{
-    const c=p.cedula||p.id;
-    const pgs=(aportes[c]||{pagos:[]}).pagos||[];
+    const id=p.cedula||p.id;
+    const pgs=(aportes[id]||{pagos:[]}).pagos||[];
     const total=pgs.reduce((s,x)=>s+(+x.monto||0),0);
-    const falta=cuota?Math.max(0,cuota-total):0;
-    const st=!cuota?'ok':total<=0?'none':total>=cuota?'paid':'partial';
-    const pct=cuota?Math.min(100,Math.round(total/cuota*100)):0;
-    const bCls={paid:'paid-bar',partial:'part-bar',none:'none-bar',ok:'paid-bar'}[st];
-    const aCl={paid:'var(--g)',partial:'var(--y)',none:'var(--r)',ok:'var(--mt)'}[st];
-    const dCls={paid:'sdot-g',partial:'sdot-y',none:'sdot-r',ok:'sdot-g'}[st];
+    const aCl=total>0?'var(--g)':'var(--mt)';
+    const dCls=total>0?'sdot-g':'sdot-r';
     return `<div class="arow">
       <div class="aleft">
         <div class="sdot ${dCls}"></div>
-        <div class="aav" style="background:${clr(c)}">
-          ${p.fotoURL?`<img src="${p.fotoURL}">`:''}${!p.fotoURL?ini(p.nombre||c):''}
+        <div class="aav" style="background:${clr(id)}">
+          ${p.fotoURL?`<img src="${p.fotoURL}">`:''}${!p.fotoURL?ini(p.nombre||id):''}
         </div>
         <div style="min-width:0">
-          <div class="aname">${p.nombre||c} <span style="font-family:'Bebas Neue',sans-serif;color:var(--d3);font-size:15px">#${p.numCamiseta||'—'}</span></div>
-          <div class="ameta">${cuota?`Cuota: ${fmt(cuota)} · Falta: ${fmt(falta)}`:'Sin meta definida'}</div>
-          ${cuota?`<div class="pbar"><div class="pfill ${bCls}" style="width:${pct}%"></div></div>`:''}
+          <div class="aname">${p.nombre||id} <span style="font-family:'Bebas Neue',sans-serif;color:var(--d3);font-size:15px">#${p.numCamiseta||'—'}</span></div>
+          <div class="ameta">${pgs.length?pgs.length+' abono(s) realizados':'Sin abonos aún'}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <div class="aamount" style="color:${aCl}">${fmt(total)}</div>
-        ${isAdminView?`<button class="btn bg bsm" onclick='openAporteModal("${c}","${p.nombre||c}")'>+ Pago</button>`:''}
+        <div style="color:${aCl};font-family:'Bebas Neue',sans-serif;font-size:18px">${fmt(total)}</div>
+        ${isAdminView?`<button class="btn bg bsm" onclick='openAporteModal("${id}","${p.nombre||id}")'>+ Pago</button>`:''}
       </div>
     </div>`;
   }).join('');
+  updateCaja(players,aportes);
 }
 
 function updateCaja(players,aportes){
-  const cuota=teamMeta&&players.length?Math.ceil(teamMeta/players.length):0;
-  const totalG=players.reduce((s,p)=>{const c=p.cedula||p.id;const pgs=(aportes[c]||{pagos:[]}).pagos||[];return s+pgs.reduce((a,x)=>a+(+x.monto||0),0);},0);
+  const totalG=players.reduce((s,p)=>{
+    const c=p.cedula||p.id;
+    return s+(aportes[c]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;
+  },0);
+  const falta=teamMeta?Math.max(0,teamMeta-totalG):0;
   const pct=teamMeta?Math.min(100,Math.round(totalG/teamMeta*100)):0;
+  
   const t=document.getElementById('cj-total');if(t)t.textContent=fmt(totalG);
-  const s=document.getElementById('cj-sub');if(s)s.textContent=teamMeta?`Meta: ${fmt(teamMeta)} · ${pct}% completado`:'Define una meta arriba';
+  const s=document.getElementById('cj-sub');
+  if(s)s.textContent=teamMeta?`Meta: ${fmt(teamMeta)} · Falta: ${fmt(falta)} · ${pct}% completado`:'Define una meta arriba';
   const b=document.getElementById('cj-bar');if(b)b.style.width=pct+'%';
-  const cp=document.getElementById('cj-p');if(cp)cp.textContent=players.filter(p=>{const c=p.cedula||p.id;const t=(aportes[c]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;return cuota&&t>=cuota;}).length;
-  const cpa=document.getElementById('cj-pa');if(cpa)cpa.textContent=players.filter(p=>{const c=p.cedula||p.id;const t=(aportes[c]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;return cuota&&t>0&&t<cuota;}).length;
-  const cd=document.getElementById('cj-d');if(cd)cd.textContent=players.filter(p=>{const c=p.cedula||p.id;const t=(aportes[c]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;return cuota&&t<=0;}).length;
+  
+  // Show: aportaron algo / sin abonos / total jugadores
+  const conAbonos=players.filter(p=>{const c=p.cedula||p.id;return (aportes[c]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0 > 0;}).length;
+  const sinAbonos=players.length-conAbonos;
+  
+  const cp=document.getElementById('cj-p');if(cp)cp.textContent=conAbonos;
+  const cpa=document.getElementById('cj-pa');if(cpa)cpa.textContent=fmt(falta).replace('$','');
+  const cd=document.getElementById('cj-d');if(cd)cd.textContent=sinAbonos;
 }
 
 function openAporteModal(c,nombre){
