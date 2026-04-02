@@ -846,10 +846,11 @@ function setupPlayer(){
 }
 
 function renderPlayerTabs(t){
-  const tabs=[['perfil','👤 Mi Perfil'],['aportes','💰 Aportes'],['estadisticas','📊 Stats']];
+  const tabs=[['perfil','👤 Perfil'],['aportes','💰 Aportes'],['partidos','🏆 Partidos'],['estadisticas','📊 Stats']];
   document.getElementById('main-tabs').innerHTML=tabs.map(([k,v])=>`<button class="tab${k===t?' active':''}" onclick="renderPlayerTabs('${k}')">${v}</button>`).join('');
   if(t==='perfil') renderPlayerPerfil();
   if(t==='aportes') renderPlayerAportes();
+  if(t==='partidos') renderPlayerPartidos();
   if(t==='estadisticas') renderPlayerEstadisticas();
 }
 
@@ -942,6 +943,106 @@ function renderPlayerAportes(){
     if(d.exists){teamMeta=d.data().meta||0;renderApList(players,aportes,false);}
   }).catch(e=>console.error('meta error:',e));
   _uns.push(u1,u2);
+}
+
+function renderPlayerPartidos(){
+  const el=document.getElementById('main-content');
+  el.innerHTML=`
+    <div class="stitle">🏆 Partidos</div>
+    <div id="pl-matches"><div class="empty"><div class="spin"></div></div></div>`;
+
+  const u=window.db.collection('matches').orderBy('createdAt','desc').onSnapshot(s=>{
+    const ms=s.docs.map(d=>({id:d.id,...d.data()}));
+    const el2=document.getElementById('pl-matches');
+    if(!el2)return;
+    if(!ms.length){
+      el2.innerHTML='<div class="empty"><div class="empty-ico">🏆</div><div>Sin partidos registrados</div></div>';
+      return;
+    }
+
+    // Stats totals
+    const totals={W:0,D:0,L:0,gf:0,ga:0};
+    ms.forEach(m=>{
+      if(m.result==='V')totals.W++;
+      else if(m.result==='E')totals.D++;
+      else if(m.result==='D')totals.L++;
+      totals.gf+=(+m.gf||0);
+      totals.ga+=(+m.ga||0);
+    });
+    const pts=totals.W*3+totals.D;
+
+    el2.innerHTML=`
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:12px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">📊 Total Estadísticas</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+          <div style="text-align:center;background:var(--d2);border-radius:8px;padding:8px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold)">${pts}</div>
+            <div style="font-size:10px;color:var(--mt)">Puntos</div>
+          </div>
+          <div style="text-align:center;background:var(--d2);border-radius:8px;padding:8px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:#2ecc71">${totals.W}</div>
+            <div style="font-size:10px;color:var(--mt)">Victorias</div>
+          </div>
+          <div style="text-align:center;background:var(--d2);border-radius:8px;padding:8px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--y)">${totals.D}</div>
+            <div style="font-size:10px;color:var(--mt)">Empates</div>
+          </div>
+          <div style="text-align:center;background:var(--d2);border-radius:8px;padding:8px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--r)">${totals.L}</div>
+            <div style="font-size:10px;color:var(--mt)">Derrotas</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+          <div style="text-align:center;background:var(--d2);border-radius:8px;padding:8px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--g)">${ms.length}</div>
+            <div style="font-size:10px;color:var(--mt)">Jugados</div>
+          </div>
+          <div style="text-align:center;background:var(--d2);border-radius:8px;padding:8px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--g)">${totals.gf}</div>
+            <div style="font-size:10px;color:var(--mt)">Goles a favor</div>
+          </div>
+          <div style="text-align:center;background:var(--d2);border-radius:8px;padding:8px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--r)">${totals.ga}</div>
+            <div style="font-size:10px;color:var(--mt)">Goles en contra</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:12px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Historial de partidos</div>
+      ${ms.map(m=>{
+        const res=m.result==='V'?{t:'VICTORIA',c:'#2ecc71'}:m.result==='E'?{t:'EMPATE',c:'var(--y)'}:{t:'DERROTA',c:'var(--r)'};
+        return `<div class="mitem" style="cursor:pointer;margin-bottom:8px;" onclick="showMatchDetail('${m.id}')">
+          <div style="flex:1;">
+            <div style="font-weight:600;">Warriors FC <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);margin:0 6px;">${m.gf||0} - ${m.ga||0}</span> ${m.rival||'Rival'}</div>
+            <div style="font-size:11px;color:var(--mt);margin-top:3px;">${m.date||''} · ${m.type||''} · ${m.home||''}${m.venue?' · '+m.venue:''}</div>
+            ${m.goleadores?`<div style="font-size:11px;color:var(--g);margin-top:2px;">⚽ ${m.goleadores}</div>`:''}
+            ${m.asistencias?`<div style="font-size:11px;color:var(--b);margin-top:2px;">🎯 ${m.asistencias}</div>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span style="background:${res.c}22;color:${res.c};font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;border:1px solid ${res.c}44;">${res.t}</span>
+          </div>
+        </div>`;
+      }).join('')}`;
+  });
+  _uns.push(u);
+}
+
+async function showMatchDetail(matchId){
+  const snap=await window.db.doc('matches/'+matchId).get();
+  if(!snap.exists)return;
+  const m=snap.data();
+  const res=m.result==='V'?{t:'VICTORIA',c:'#2ecc71'}:m.result==='E'?{t:'EMPATE',c:'var(--y)'}:{t:'DERROTA',c:'var(--r)'};
+  showModal(`${m.rival||'Rival'}`,`
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:13px;color:var(--mt);margin-bottom:8px;">Warriors FC vs ${m.rival||'Rival'}</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--gold);letter-spacing:4px;">${m.gf||0} - ${m.ga||0}</div>
+      <span style="background:${res.c}22;color:${res.c};font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid ${res.c}44;">${res.t}</span>
+    </div>
+    <div style="font-size:12px;color:var(--mt);margin-bottom:12px;">${m.date||''} · ${m.type||''} · ${m.home||''}${m.venue?' · '+m.venue:''}</div>
+    ${m.goleadores?`<div style="margin-bottom:8px;padding:10px;background:var(--d2);border-radius:8px;"><span style="color:var(--g);font-weight:600;">⚽ Goleadores</span><div style="margin-top:4px;font-size:13px;">${m.goleadores}</div></div>`:''}
+    ${m.asistencias?`<div style="margin-bottom:8px;padding:10px;background:var(--d2);border-radius:8px;"><span style="color:var(--b);font-weight:600;">🎯 Asistencias</span><div style="margin-top:4px;font-size:13px;">${m.asistencias}</div></div>`:''}
+    ${m.notes?`<div style="padding:10px;background:var(--d2);border-radius:8px;"><span style="color:var(--mt);font-weight:600;">📝 Notas</span><div style="margin-top:4px;font-size:13px;">${m.notes}</div></div>`:''}
+  `);
 }
 
 function renderPlayerEstadisticas(){
@@ -1274,24 +1375,32 @@ function renderApList(players,aportes,isAdminView){
 }
 
 function updateCaja(players,aportes){
-  const totalG=players.reduce((s,p)=>{
-    const c=p.cedula||p.id;
-    return s+(aportes[c]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;
-  },0);
+  let totalG=0;
+  players.forEach(p=>{
+    const id=p.cedula||p.id;
+    const pgs=(aportes[id]||{pagos:[]}).pagos||[];
+    totalG+=pgs.reduce((a,x)=>a+(+x.monto||0),0);
+  });
   const falta=teamMeta?Math.max(0,teamMeta-totalG):0;
   const pct=teamMeta?Math.min(100,Math.round(totalG/teamMeta*100)):0;
-  
+
   const t=document.getElementById('cj-total');if(t)t.textContent=fmt(totalG);
+  const tv=document.getElementById('caja-total-val');if(tv)tv.textContent=fmt(totalG);
   const s=document.getElementById('cj-sub');
   if(s)s.textContent=teamMeta?`Meta: ${fmt(teamMeta)} · Falta: ${fmt(falta)} · ${pct}% completado`:'Define una meta arriba';
+  const ml=document.getElementById('caja-meta-label');
+  if(ml)ml.textContent=teamMeta?`Meta: ${fmt(teamMeta)} · Falta: ${fmt(falta)} · ${pct}% completado`:'';
   const b=document.getElementById('cj-bar');if(b)b.style.width=pct+'%';
-  
-  // Show: aportaron algo / sin abonos / total jugadores
-  const conAbonos=players.filter(p=>{const c=p.cedula||p.id;return (aportes[c]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0 > 0;}).length;
+  const cb=document.getElementById('caja-bar');if(cb)cb.style.width=pct+'%';
+
+  const conAbonos=players.filter(p=>{
+    const id=p.cedula||p.id;
+    return (aportes[id]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0 > 0;
+  }).length;
   const sinAbonos=players.length-conAbonos;
-  
+
   const cp=document.getElementById('cj-p');if(cp)cp.textContent=conAbonos;
-  const cpa=document.getElementById('cj-pa');if(cpa)cpa.textContent=fmt(falta).replace('$','');
+  const cpa=document.getElementById('cj-pa');if(cpa)cpa.textContent=fmt(falta);
   const cd=document.getElementById('cj-d');if(cd)cd.textContent=sinAbonos;
 }
 
