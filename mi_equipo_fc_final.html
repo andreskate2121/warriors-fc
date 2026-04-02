@@ -331,6 +331,15 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.4);}
 .toast.show{opacity:1;}
 .empty{text-align:center;padding:38px;color:var(--mt);}
+.player-stat-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--d2);border-radius:8px;margin-bottom:6px;border:1px solid var(--br);}
+.player-stat-row .pname{flex:1;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stat-counter{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.stat-counter button{width:24px;height:24px;border-radius:50%;border:none;cursor:pointer;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center;}
+.stat-counter .minus{background:rgba(231,76,60,0.2);color:var(--r);}
+.stat-counter .plus{background:rgba(46,204,113,0.2);color:var(--g);}
+.stat-counter .count{min-width:20px;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:16px;}
+.stat-icon{font-size:14px;flex-shrink:0;}
+.card-badge{background:rgba(192,57,43,0.15);color:var(--r);border:1px solid rgba(192,57,43,0.3);font-size:10px;padding:2px 6px;border-radius:10px;}
 .empty-ico{font-size:34px;margin-bottom:10px;}
 .exbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
 .tgg{color:var(--g);}.tgy{color:var(--y);}.tgr{color:var(--r);}
@@ -1272,6 +1281,11 @@ function adminPartidos(){
         <div class="fg"><label>Condición</label><select id="pm-h"><option value="LOCAL">Local</option><option value="VISITANTE">Visitante</option><option value="NEUTRAL">Neutral</option></select></div>
       </div>
       <div class="fg" style="margin-top:10px"><label>Notas</label><textarea id="pm-n" rows="2" style="resize:vertical"></textarea></div>
+      
+      <div style="margin-top:14px;border-top:1px solid var(--br);padding-top:14px;">
+        <div style="font-size:12px;color:var(--mt);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">⚽ Estadísticas del partido</div>
+        <div id="match-players-selector" style="max-height:300px;overflow-y:auto;"></div>
+      </div>
       <div class="factions"><button class="btn bg" onclick="adminAddMatch()">+ Registrar partido</button></div>
     </div>
     <div id="sm-grid" style="display:none">
@@ -1289,6 +1303,78 @@ function adminPartidos(){
     renderMatchList(ms);
   });
   _uns.push(u);
+
+  // Load players for stats selector
+  window.db.collection('players').get().then(snap=>{
+    const players=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderMatchPlayerSelector(players);
+  });
+}
+
+// Match player stats state
+let matchStats={};
+
+function renderMatchPlayerSelector(players){
+  const el=document.getElementById('match-players-selector');
+  if(!el)return;
+  // Init stats
+  players.forEach(p=>{ matchStats[p.cedula||p.id]={goals:0,assists:0,yellow:0,red:0}; });
+
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:8px;padding:0 10px;">
+      <div style="font-size:10px;color:var(--mt);text-align:center;">Jugador</div>
+      <div style="font-size:10px;color:var(--g);text-align:center;">⚽ Goles</div>
+      <div style="font-size:10px;color:var(--b);text-align:center;">🎯 Asist.</div>
+      <div style="font-size:10px;color:var(--y);text-align:center;">🟡🔴 Tarj.</div>
+    </div>
+    ${players.map(p=>{
+      const id=p.cedula||p.id;
+      return `<div class="player-stat-row" id="psr-${id}">
+        <div class="aav" style="background:${clr(id)};width:30px;height:30px;flex-shrink:0;">
+          ${p.fotoURL?`<img src="${p.fotoURL}">`:''}${!p.fotoURL?ini(p.nombre||id):''}
+        </div>
+        <div class="pname">${p.nombre||id}</div>
+        <div class="stat-counter">
+          <button class="minus" onclick="changeStat('${id}','goals',-1)">−</button>
+          <span class="count" id="g-${id}">0</span>
+          <button class="plus" onclick="changeStat('${id}','goals',1)">+</button>
+        </div>
+        <div class="stat-counter">
+          <button class="minus" onclick="changeStat('${id}','assists',-1)">−</button>
+          <span class="count" id="a-${id}">0</span>
+          <button class="plus" onclick="changeStat('${id}','assists',1)">+</button>
+        </div>
+        <div class="stat-counter" style="gap:6px;">
+          <button class="stat-icon" onclick="toggleCard('${id}','yellow')" id="y-${id}" style="background:rgba(241,196,15,0.15);border:none;cursor:pointer;border-radius:4px;padding:2px 5px;">🟡</button>
+          <button class="stat-icon" onclick="toggleCard('${id}','red')" id="r-${id}" style="background:rgba(231,76,60,0.15);border:none;cursor:pointer;border-radius:4px;padding:2px 5px;">🔴</button>
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+function changeStat(id, stat, delta){
+  if(!matchStats[id]) matchStats[id]={goals:0,assists:0,yellow:0,red:0};
+  matchStats[id][stat]=Math.max(0,(matchStats[id][stat]||0)+delta);
+  const prefix=stat==='goals'?'g':'a';
+  const el=document.getElementById(prefix+'-'+id);
+  if(el) el.textContent=matchStats[id][stat];
+  // Highlight row if has stats
+  updateStatRow(id);
+}
+
+function toggleCard(id, type){
+  if(!matchStats[id]) matchStats[id]={goals:0,assists:0,yellow:0,red:0};
+  matchStats[id][type]=matchStats[id][type]?0:1;
+  const el=document.getElementById((type==='yellow'?'y':'r')+'-'+id);
+  if(el) el.style.opacity=matchStats[id][type]?'1':'0.4';
+  updateStatRow(id);
+}
+
+function updateStatRow(id){
+  const row=document.getElementById('psr-'+id);
+  const stats=matchStats[id]||{};
+  const hasStats=stats.goals>0||stats.assists>0||stats.yellow||stats.red;
+  if(row) row.style.borderColor=hasStats?'rgba(192,57,43,0.5)':'var(--br)';
 }
 
 function renderMatchList(ms){
@@ -1324,9 +1410,62 @@ async function adminAddMatch(){
   if(!r){toast('Ingresa el rival',true);return;}
   const gf=+document.getElementById('pm-gf').value||0,ga=+document.getElementById('pm-ga').value||0;
   try{
-    await window.db.collection('matches').add({rival:r,date:document.getElementById('pm-d').value||new Date().toISOString().split('T')[0],gf,ga,result:gf>ga?'V':gf<ga?'D':'E',type:document.getElementById('pm-t').value,venue:document.getElementById('pm-v').value,home:document.getElementById('pm-h').value,notes:document.getElementById('pm-n').value,goleadores:document.getElementById('pm-goleadores').value,asistencias:document.getElementById('pm-asistencias').value,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    ['pm-r','pm-gf','pm-ga','pm-v','pm-n','pm-goleadores','pm-asistencias'].forEach(id=>document.getElementById(id).value='');
-    toast('Partido registrado ✓');
+    // Build goleadores and asistencias strings from matchStats
+    const goleadoresList=[];
+    const asistenciasList=[];
+    const batch=window.db.batch();
+
+    // Get player names for display
+    const playersSnap=await window.db.collection('players').get();
+    const playersMap={};
+    playersSnap.docs.forEach(d=>playersMap[d.id]={...d.data(),ref:d.ref});
+
+    Object.entries(matchStats).forEach(([id,stats])=>{
+      const p=playersMap[id];
+      if(!p)return;
+      const name=p.nombre||id;
+      if(stats.goals>0) for(let i=0;i<stats.goals;i++) goleadoresList.push(name);
+      if(stats.assists>0) for(let i=0;i<stats.assists;i++) asistenciasList.push(name);
+      // Update player stats
+      const hasActivity=stats.goals>0||stats.assists>0||stats.yellow||stats.red;
+      if(hasActivity){
+        const cur=p.stats||{goals:0,assists:0,games:0,yellow:0,red:0,mins:0};
+        batch.update(p.ref,{stats:{
+          goals:(cur.goals||0)+stats.goals,
+          assists:(cur.assists||0)+stats.assists,
+          games:(cur.games||0)+1,
+          yellow:(cur.yellow||0)+(stats.yellow||0),
+          red:(cur.red||0)+(stats.red||0),
+          mins:cur.mins||0
+        }});
+      }
+    });
+
+    await window.db.collection('matches').add({
+      rival:r,
+      date:document.getElementById('pm-d').value||new Date().toISOString().split('T')[0],
+      gf,ga,
+      result:gf>ga?'V':gf<ga?'D':'E',
+      type:document.getElementById('pm-t').value,
+      venue:document.getElementById('pm-v').value,
+      home:document.getElementById('pm-h').value,
+      notes:document.getElementById('pm-n').value,
+      goleadores:goleadoresList.join(', '),
+      asistencias:asistenciasList.join(', '),
+      playerStats:matchStats,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await batch.commit();
+    
+    // Reset stats
+    matchStats={};
+    ['pm-r','pm-gf','pm-ga','pm-v','pm-n'].forEach(id=>document.getElementById(id).value='');
+    // Reload player selector
+    window.db.collection('players').get().then(snap=>{
+      const players=snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderMatchPlayerSelector(players);
+    });
+    toast('Partido registrado y estadísticas actualizadas ✓');
   }catch(e){toast('Error: '+e.message,true);}
 }
 
