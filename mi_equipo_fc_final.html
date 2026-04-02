@@ -268,7 +268,7 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
       <h2 id="l-subtitle">Ingresa con tu número de identificación</h2>
       <div class="fi"><label>Número de identificación</label><input type="text" id="l-ced" placeholder="Ej: 1234567890" inputmode="numeric" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"/></div>
       <div class="fi" id="l-passfield" style="display:none"><label>Contraseña (admin)</label><input type="password" id="l-pass" placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-      <button class="btn-login" onclick="doLogin()">Entrar ⚽</button>
+      <button class="btn-login" id="btn-entrar" onclick="doLoginBtn()">Entrar ⚽</button>
       <div class="lerr" id="l-err"></div>
       <div class="ltoggle"><span onclick="toggleAdmin()">Acceso administrador</span></div>
     </div>
@@ -506,6 +506,13 @@ function showBlocked(){
 
 // ── LOGIN ──────────────────────────────────────
 let isAdmin=false;
+function doLoginBtn(){
+  const btn=document.getElementById('btn-entrar');
+  if(btn){btn.textContent='Entrando...';btn.disabled=true;}
+  doLogin().finally(()=>{
+    if(btn){btn.textContent='Entrar ⚽';btn.disabled=false;}
+  });
+}
 function toggleAdmin(){
   isAdmin=!isAdmin;
   const cedInput=document.getElementById('l-ced');
@@ -532,6 +539,12 @@ function toggleAdmin(){
 }
 
 async function doLogin(){
+  // Check Firebase is ready
+  if(!window.auth){
+    setErr('Conectando con Firebase... intenta de nuevo en unos segundos.');
+    setTimeout(()=>{if(window.auth)clearErr();},3000);
+    return;
+  }
   const c=document.getElementById('l-ced').value.trim();
   if(!c){setErr('Ingresa tu número de identificación');return;}
   clearErr();
@@ -539,13 +552,21 @@ async function doLogin(){
     const email=document.getElementById('l-ced').value.trim();
     const p=document.getElementById('l-pass').value;
     if(!p){setErr('Ingresa la contraseña');return;}
-    try{await window.auth.signInWithEmailAndPassword(email,p);}
+    try{
+      const result = await window.auth.signInWithEmailAndPassword(email,p);
+      console.log('Login success:', result.user.uid);
+    }
     catch(e){
       console.log('Login error:',e.code, e.message);
-      if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'){setErr('Contraseña incorrecta');}
-      else if(e.code==='auth/user-not-found'){setErr('Correo no registrado');}
-      else if(e.code==='auth/invalid-email'){setErr('Correo inválido');}
-      else{setErr('Error: '+e.message);}
+      if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'||e.code==='auth/invalid-login-credentials'){
+        setErr('Contraseña incorrecta. Verifica tu contraseña.');
+      }
+      else if(e.code==='auth/user-not-found'){setErr('Correo no registrado en Firebase.');}
+      else if(e.code==='auth/invalid-email'){setErr('Formato de correo inválido.');}
+      else if(e.code==='auth/email-not-verified'){setErr('Debes verificar tu correo primero.');}
+      else if(e.code==='auth/too-many-requests'){setErr('Demasiados intentos. Espera unos minutos.');}
+      else if(e.code==='auth/network-request-failed'){setErr('Error de red. Verifica tu conexión.');}
+      else{setErr('Error ('+e.code+'): '+e.message);}
     }
     return;
   }
