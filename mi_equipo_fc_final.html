@@ -971,7 +971,7 @@ function renderPlayerPerfil(){
       </div>
       <div class="grid2" style="margin-top:10px">
         <div class="fg"><label>Nombre en camiseta</label><input id="pf-ncam" value="${p.nombreCamiseta||''}" placeholder="APELLIDO" maxlength="12" /></div>
-        <div class="fg"><label>Posición</label><select id="pf-pos"><option value="POR"${p.pos==='POR'?' selected':''}>Portero (POR)</option><option value="DEF"${p.pos==='DEF'?' selected':''}>Defensa (DEF)</option><option value="MED"${p.pos==='MED'?' selected':''}>Mediocampista (MED)</option><option value="DEL"${p.pos==='DEL'?' selected':''}>Delantero (DEL)</option></select></div>
+        <div class="fg"><label>Posición</label><select id="pf-pos">${['POR','DEF','MED','DEL'].map(v=>`<option value="${v}"${p.pos===v?' selected':''}>${{POR:'Portero',DEF:'Defensa',MED:'Mediocampista',DEL:'Delantero'}[v]} (${v})</option>`).join('')}</select></div>
       </div>
       <div class="factions"><button class="btn bg" onclick="savePlayerProfile()">Guardar cambios</button></div>
     </div>`;
