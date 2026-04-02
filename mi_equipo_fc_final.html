@@ -874,20 +874,28 @@ async function handlePhotoUpload(input){
   if(file.size>5*1024*1024){toast('Máximo 5MB',true);return;}
   toast('Subiendo foto...');
   try{
-    const fd=new FormData();
-    fd.append('file',file);
-    fd.append('upload_preset',CLOUDINARY_PRESET);
-    fd.append('folder','warriors_players');
-    const res=await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/image/upload',{method:'POST',body:fd});
-    const data=await res.json();
-    if(data.error){throw new Error(data.error.message);}
-    const url=data.secure_url;
-    await window.db.doc('players/'+ced).update({fotoURL:url});
-    updateTopbar(pData?.nombre||'',url,false);
-    toast('Foto actualizada ✓');
+    // Convert to base64 first to avoid any FormData issues
+    const reader=new FileReader();
+    reader.onload=async function(e){
+      try{
+        const base64=e.target.result;
+        const fd=new FormData();
+        fd.append('file',base64);
+        fd.append('upload_preset',CLOUDINARY_PRESET);
+        const res=await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/image/upload',{method:'POST',body:fd});
+        const data=await res.json();
+        if(data.error){toast('Error Cloudinary: '+data.error.message,true);return;}
+        const url=data.secure_url;
+        await window.db.doc('players/'+ced).update({fotoURL:url});
+        updateTopbar(pData?.nombre||'',url,false);
+        toast('Foto actualizada ✓');
+      }catch(err){
+        toast('Error: '+err.message,true);
+      }
+    };
+    reader.readAsDataURL(file);
   }catch(e){
-    console.error('Photo upload error:',e);
-    toast('Error al subir foto: '+e.message,true);
+    toast('Error: '+e.message,true);
   }
   input.value='';
 }
