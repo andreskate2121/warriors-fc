@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Warriors FC - Test</title>
+<style>
+body{background:#0d1117;color:#e6edf3;font-family:sans-serif;padding:20px;font-size:14px;}
+.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:16px;margin-bottom:12px;}
+input{width:100%;background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:7px;padding:10px;font-size:14px;outline:none;margin-bottom:10px;box-sizing:border-box;}
+button{width:100%;padding:11px;background:#2ecc71;color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;}
+.log{background:#0d1117;border:1px solid #30363d;border-radius:7px;padding:10px;font-size:12px;font-family:monospace;min-height:100px;max-height:300px;overflow-y:auto;}
+.ok{color:#2ecc71;} .err{color:#e74c3c;} .info{color:#3498db;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div style="color:#2ecc71;font-weight:bold;margin-bottom:12px;">Warriors FC - Diagnostico</div>
+  <div id="firebase-status" style="margin-bottom:10px;color:#f1c40f;">Cargando Firebase...</div>
+  <input id="email" type="email" value="andreskate2121@gmail.com" />
+  <input id="pass" type="password" placeholder="Contrasena" />
+  <button onclick="testLogin()">Probar Login</button>
+  <button onclick="testFirestore()" style="background:#3498db;">Probar Firestore</button>
+  <button onclick="clearLog()" style="background:#30363d;">Limpiar</button>
+</div>
+<div class="card">
+  <div style="color:#8b949e;font-size:11px;margin-bottom:6px;">LOG:</div>
+  <div class="log" id="log"></div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyBs3mVl6k7sh7YNDA1drCk3-prUoaB95OE",authDomain:"warriors-800db.firebaseapp.com",projectId:"warriors-800db",storageBucket:"warriors-800db.firebasestorage.app",messagingSenderId:"222280224281",appId:"1:222280224281:web:eb8380cee5c5d69c882488"};
+function log(msg,type='info'){const el=document.getElementById('log');const d=document.createElement('div');d.className=type;d.textContent=new Date().toLocaleTimeString()+' > '+msg;el.appendChild(d);el.scrollTop=el.scrollHeight;}
+function clearLog(){document.getElementById('log').innerHTML='';}
+window.addEventListener('load',()=>{
+  log('Pagina cargada','info');
+  if(typeof firebase==='undefined'){log('ERROR: Firebase no cargo','err');document.getElementById('firebase-status').textContent='Firebase no cargo';document.getElementById('firebase-status').style.color='#e74c3c';return;}
+  log('Firebase SDK cargado','ok');
+  try{firebase.initializeApp(firebaseConfig);log('Firebase inicializado','ok');}catch(e){if(e.message.includes('already')){log('Firebase ya iniciado','ok');}else{log('Error init: '+e.message,'err');}}
+  document.getElementById('firebase-status').textContent='Firebase listo';
+  document.getElementById('firebase-status').style.color='#2ecc71';
+  firebase.auth().onAuthStateChanged(u=>{if(u){log('Usuario logueado: '+u.email,'ok');}else{log('Sin sesion activa','info');}});
+});
+async function testLogin(){
+  const email=document.getElementById('email').value.trim();
+  const pass=document.getElementById('pass').value;
+  log('Intentando: '+email,'info');
+  try{const r=await firebase.auth().signInWithEmailAndPassword(email,pass);log('LOGIN OK! UID: '+r.user.uid,'ok');log('Email verificado: '+r.user.emailVerified,'info');}
+  catch(e){log('Error: '+e.code,'err');log('Msg: '+e.message,'err');}
+}
+async function testFirestore(){
+  log('Probando Firestore...','info');
+  try{const db=firebase.firestore();const s=await db.doc('config/admin').get();if(s.exists){log('Firestore OK - uid: '+s.data().uid,'ok');}else{log('config/admin NO existe','err');}}
+  catch(e){log('Error Firestore: '+e.code,'err');}
+}
+</script>
+</body>
+</html>
