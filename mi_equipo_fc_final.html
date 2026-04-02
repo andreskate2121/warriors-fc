@@ -873,31 +873,29 @@ async function handlePhotoUpload(input){
   const file=input.files[0];if(!file)return;
   if(file.size>5*1024*1024){toast('Máximo 5MB',true);return;}
   toast('Subiendo foto...');
+  input.value='';
   try{
-    // Convert to base64 first to avoid any FormData issues
     const reader=new FileReader();
     reader.onload=async function(e){
       try{
-        const base64=e.target.result;
         const fd=new FormData();
-        fd.append('file',base64);
+        fd.append('file',e.target.result);
         fd.append('upload_preset',CLOUDINARY_PRESET);
         const res=await fetch('https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/image/upload',{method:'POST',body:fd});
         const data=await res.json();
-        if(data.error){toast('Error Cloudinary: '+data.error.message,true);return;}
-        const url=data.secure_url;
-        await window.db.doc('players/'+ced).update({fotoURL:url});
-        updateTopbar(pData?.nombre||'',url,false);
-        toast('Foto actualizada ✓');
+        if(data.error){toast('❌ '+data.error.message,true);return;}
+        // Only update Firestore - snapshot listener will update UI automatically
+        await window.db.doc('players/'+ced).set({fotoURL:data.secure_url},{merge:true});
+        toast('✓ Foto actualizada');
       }catch(err){
-        toast('Error: '+err.message,true);
+        toast('❌ Error: '+err.message,true);
       }
     };
+    reader.onerror=()=>toast('❌ Error leyendo imagen',true);
     reader.readAsDataURL(file);
   }catch(e){
-    toast('Error: '+e.message,true);
+    toast('❌ Error: '+e.message,true);
   }
-  input.value='';
 }
 
 // ── TOPBAR ────────────────────────────────────
