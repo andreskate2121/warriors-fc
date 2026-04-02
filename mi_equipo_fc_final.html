@@ -574,7 +574,10 @@ window.addEventListener('load',()=>{
     startApp();
   }catch(e){
     console.error('startApp error:',e);
-    document.getElementById('scr-load').innerHTML='<div style="text-align:center;padding:30px;color:#e74c3c"><div style="font-size:30px;margin-bottom:12px">⚠️</div><div style="font-size:14px">Error: '+e.message+'</div><button onclick="location.reload()" style="margin-top:16px;padding:10px 20px;background:#2ecc71;color:#fff;border:none;border-radius:8px;cursor:pointer">Reintentar</button></div>';
+    setTimeout(()=>{
+      document.getElementById('scr-load').style.display='none';
+      document.getElementById('scr-login').style.display='flex';
+    },1000);
   }
 });
 
@@ -587,16 +590,11 @@ function startApp(){
   window.auth=auth_;window.db=db_;window.stor=stor_;
   // trigger auth listener
   // Timeout fallback - if Firebase doesn't respond in 8 seconds
-  setTimeout(()=>{
-    const load=document.getElementById('scr-load');
-    if(load&&load.style.display!=='none'){
-      load.style.display='none';
-      document.getElementById('scr-login').style.display='flex';
-    }
-  },8000);
+  const loadTimer=setTimeout(()=>{document.getElementById('scr-load').style.display='none';document.getElementById('scr-login').style.display='flex';},5000);
 
   auth_.onAuthStateChanged(async u=>{
-    hide('scr-load');
+    clearTimeout(loadTimer);
+    document.getElementById('scr-load').style.display='none';
     if(!u){document.getElementById('scr-login').style.display='flex';
       try{const d=await db_.doc('config/team').get();if(d.exists&&d.data().name)document.getElementById('l-teamname').textContent=d.data().name;}catch(e){}
       return;}
