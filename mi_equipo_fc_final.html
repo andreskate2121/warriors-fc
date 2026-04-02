@@ -1092,6 +1092,67 @@ async function adminAddPlayer(){
   }catch(e){toast('Error: '+e.message,true);}
 }
 
+async function adminEditPlayer(c){
+  const snap=await window.db.doc('players/'+c).get();
+  if(!snap.exists){toast('Jugador no encontrado',true);return;}
+  const p=snap.data();
+  const edad=calcEdad(p.fechaNacimiento);
+  showModal('Jugador: '+(p.nombre||c),`
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="width:80px;height:80px;border-radius:50%;overflow:hidden;border:2px solid var(--gold);margin:0 auto 8px;background:${clr(c)}">
+        ${p.fotoURL?`<img src="${p.fotoURL}" style="width:100%;height:100%;object-fit:cover;">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;color:#fff">${ini(p.nombre||c)}</div>`}
+      </div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;">${p.nombre||c}</div>
+      <div style="font-size:12px;color:var(--mt);">${c} · ${edad}</div>
+    </div>
+    <div class="form-grid">
+      <div class="fg"><label>Nombres</label><input id="ep-nombres" value="${p.nombres||p.nombre||''}" /></div>
+      <div class="fg"><label>Apellidos</label><input id="ep-apellidos" value="${p.apellidos||''}" /></div>
+    </div>
+    <div class="form-grid" style="margin-top:10px">
+      <div class="fg"><label>Número en camiseta</label><input type="number" id="ep-num" value="${p.numCamiseta||''}" min="1" max="99" /></div>
+      <div class="fg"><label>Nombre en camiseta</label><input id="ep-ncam" value="${p.nombreCamiseta||''}" maxlength="12" /></div>
+    </div>
+    <div class="form-grid" style="margin-top:10px">
+      <div class="fg"><label>Fecha de nacimiento</label><input type="date" id="ep-fnac" value="${p.fechaNacimiento||''}" /></div>
+      <div class="fg"><label>Posición</label>
+        <select id="ep-pos">${['POR','DEF','MED','DEL'].map(v=>`<option value="${v}"${p.pos===v?' selected':''}>${{POR:'Portero',DEF:'Defensa',MED:'Mediocampista',DEL:'Delantero'}[v]} (${v})</option>`).join('')}</select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+      <button class="btn bg" style="flex:1" onclick="adminSavePlayerEdit('${c}')">💾 Guardar</button>
+      <button class="btn" style="background:${p.blocked?'var(--g)':'var(--y)'};color:#000;flex:1" onclick="adminToggleBlock('${c}',${!p.blocked})">${p.blocked?'🔓 Desbloquear':'🔒 Bloquear'}</button>
+      <button class="btn" style="background:var(--r);flex:1" onclick="adminDeletePlayer('${c}')">🗑️ Eliminar</button>
+    </div>
+  `);
+}
+
+async function adminSavePlayerEdit(c){
+  const nombres=document.getElementById('ep-nombres').value.trim();
+  const apellidos=document.getElementById('ep-apellidos').value.trim();
+  const nombre=nombres&&apellidos?nombres+' '+apellidos:nombres||apellidos||'';
+  try{
+    await window.db.doc('players/'+c).update({
+      nombre, nombres, apellidos,
+      numCamiseta:document.getElementById('ep-num').value,
+      nombreCamiseta:document.getElementById('ep-ncam').value.toUpperCase().trim(),
+      fechaNacimiento:document.getElementById('ep-fnac').value,
+      pos:document.getElementById('ep-pos').value,
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    closeModal();
+    toast('Jugador actualizado ✓');
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+async function adminToggleBlock(c,block){
+  try{
+    await window.db.doc('players/'+c).update({blocked:block});
+    closeModal();
+    toast(block?'Jugador bloqueado':'Jugador desbloqueado');
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
 async function adminDeletePlayer(c){
   if(!confirm(`¿Eliminar permanentemente este jugador y todos sus datos?`))return;
   try{
