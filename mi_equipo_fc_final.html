@@ -974,9 +974,12 @@ function renderAdminTabs(t){
 function adminJugadores(){
   document.getElementById('main-content').innerHTML=`
     <div class="stitle">⬡ Plantilla</div>
-    <div class="exbar">
-      <button class="btn bb bsm" onclick="exportJugadoresExcel()">⬇ Jugadores + Aportes</button>
-      <button class="btn bb bsm" onclick="exportEstadisticasExcel()">⬇ Estadísticas</button>
+    <div class="exbar" style="flex-wrap:wrap;gap:8px;">
+      <div style="font-size:11px;color:var(--mt);width:100%;margin-bottom:2px;">Jugadores + Aportes:</div>
+      <button class="btn bb bsm" onclick="exportHTML()">🌐 HTML</button>
+      <button class="btn bb bsm" onclick="exportJugadoresExcel()">📊 Excel</button>
+      <button class="btn bb bsm" onclick="exportPDF()">📄 PDF</button>
+      <button class="btn bb bsm" onclick="exportEstadisticasExcel()" style="background:var(--p)">📊 Stats Excel</button>
     </div>
     <div class="card">
       <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--mt)">Registrar nuevo jugador</div>
@@ -1114,7 +1117,11 @@ async function adminDeletePlayer(c){
 function adminAportes(){
   document.getElementById('main-content').innerHTML=`
     <div class="stitle">⬡ Aportes</div>
-    <div class="exbar"><button class="btn bb bsm" onclick="exportJugadoresExcel()">⬇ Jugadores + Aportes (.xlsx)</button></div>
+    <div class="exbar">
+      <button class="btn bb bsm" onclick="exportHTML()">🌐 HTML</button>
+      <button class="btn bb bsm" onclick="exportJugadoresExcel()">📊 Excel</button>
+      <button class="btn bb bsm" onclick="exportPDF()">📄 PDF</button>
+    </div>
     <div class="card" style="margin-bottom:14px">
       <div class="grid2">
         <div class="fg"><label>Meta total de inscripción ($)</label><input id="meta-inp" type="number" placeholder="500000" /></div>
@@ -1498,6 +1505,111 @@ function tblExcel(rows, fn){
     a.download=fn.replace('.xlsx','.csv').replace('.xls','.csv');
     a.click();
     toast('Descargado como CSV (Excel no disponible)');
+  }
+}
+
+// ── SHARED HTML TABLE BUILDER ──────────────────
+async function buildReportHTML(pl, ap){
+  let maxPagos=0;
+  pl.forEach(p=>{const pgs=(ap[p.cedula||p.id]||{pagos:[]}).pagos||[];if(pgs.length>maxPagos)maxPagos=pgs.length;});
+
+  let pagoHeaders='';
+  for(let i=1;i<=maxPagos;i++) pagoHeaders+=`<th>Abono ${i}<br>Fecha</th><th>Abono ${i}<br>Monto</th><th>Método</th>`;
+
+  const totalG=pl.reduce((s,p)=>{const ced=p.cedula||p.id;return s+(ap[ced]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;},0);
+  const pct=teamMeta?Math.min(100,Math.round(totalG/teamMeta*100)):0;
+
+  let rows='';
+  pl.forEach(p=>{
+    const ced=p.cedula||p.id;
+    const pgs=(ap[ced]||{pagos:[]}).pagos||[];
+    const total=pgs.reduce((s,x)=>s+(+x.monto||0),0);
+    const fotoCell=p.fotoURL
+      ?`<img src="${p.fotoURL}" style="width:55px;height:55px;border-radius:50%;object-fit:cover;border:2px solid #8B0000;">`
+      :`<div style="width:55px;height:55px;border-radius:50%;background:#8B0000;display:inline-flex;align-items:center;justify-content:center;color:#f39c12;font-weight:bold;font-size:18px;">${(p.nombre||ced).split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</div>`;
+    let pagoCells='';
+    for(let i=0;i<maxPagos;i++){
+      const pg=pgs[i];
+      pagoCells+=pg?`<td>${pg.fecha||''}</td><td style="text-align:right;color:#27ae60;font-weight:bold;">$${Number(pg.monto||0).toLocaleString('es-CO')}</td><td>${pg.metodo||''}</td>`:`<td></td><td></td><td></td>`;
+    }
+    rows+=`<tr>
+      <td style="text-align:center;padding:4px;">${fotoCell}</td>
+      <td>${ced}</td><td><b>${p.nombre||''}</b></td>
+      <td style="text-align:center;">${p.numCamiseta||''}</td>
+      <td>${p.nombreCamiseta||''}</td>
+      <td style="text-align:right;font-weight:bold;color:#27ae60;">$${Number(total).toLocaleString('es-CO')}</td>
+      ${pagoCells}
+    </tr>`;
+  });
+
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <title>${teamName} - Reporte</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:Arial,sans-serif;background:#0a0a0a;color:#f0f0f0;padding:20px;}
+    .header{display:flex;align-items:center;gap:16px;margin-bottom:20px;background:linear-gradient(135deg,#1a0505,#2a0a0a);border:1px solid #8B0000;border-radius:12px;padding:16px;}
+    .logo{width:70px;height:70px;border-radius:50%;border:2px solid #f39c12;}
+    .team-name{font-size:28px;font-weight:900;background:linear-gradient(90deg,#f39c12,#e67e22);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:2px;}
+    .subtitle{color:#999;font-size:13px;margin-top:4px;}
+    .meta-bar{background:#1a1a1a;border:1px solid #8B0000;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
+    .meta-item{text-align:center;}
+    .meta-val{font-size:22px;font-weight:bold;color:#f39c12;}
+    .meta-lbl{font-size:11px;color:#999;margin-top:2px;}
+    .progress{flex:1;min-width:150px;}
+    .progress-bar{background:#333;border-radius:20px;height:10px;margin-top:6px;}
+    .progress-fill{height:10px;border-radius:20px;background:linear-gradient(90deg,#8B0000,#e74c3c);}
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    th{background:#8B0000;color:#f39c12;padding:8px 6px;text-align:left;border:1px solid #a00;}
+    td{padding:6px;border:1px solid #333;background:#111;vertical-align:middle;}
+    tr:nth-child(even) td{background:#1a1a1a;}
+    .total-row td{background:#8B0000 !important;color:#f39c12;font-weight:bold;}
+    @media print{body{background:white;color:black;}td{background:white !important;color:black;border-color:#ccc;}th{background:#8B0000;color:white;}.total-row td{background:#8B0000 !important;color:white;}}
+  </style></head><body>
+  <div class="header">
+    <img class="logo" src="https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg" onerror="this.style.display='none'">
+    <div><div class="team-name">${teamName}</div><div class="subtitle">Reporte de Jugadores y Aportes — ${new Date().toLocaleDateString('es-CO')}</div></div>
+  </div>
+  <div class="meta-bar">
+    <div class="meta-item"><div class="meta-val">$${Number(totalG).toLocaleString('es-CO')}</div><div class="meta-lbl">Total Recaudado</div></div>
+    ${teamMeta?`<div class="meta-item"><div class="meta-val">$${Number(teamMeta).toLocaleString('es-CO')}</div><div class="meta-lbl">Meta Total</div></div><div class="meta-item"><div class="meta-val">$${Number(Math.max(0,teamMeta-totalG)).toLocaleString('es-CO')}</div><div class="meta-lbl">Falta</div></div><div class="progress"><div style="font-size:11px;color:#999">${pct}% completado</div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></div>`:''}
+    <div class="meta-item"><div class="meta-val">${pl.length}</div><div class="meta-lbl">Jugadores</div></div>
+  </div>
+  <table>
+    <thead><tr><th width="65">Foto</th><th>Identificación</th><th>Nombre</th><th>#</th><th>Camiseta</th><th>Total</th>${pagoHeaders}</tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr class="total-row"><td colspan="5" style="text-align:right;">TOTAL RECAUDADO:</td><td>$${Number(totalG).toLocaleString('es-CO')}</td>${Array(maxPagos*3).fill('<td></td>').join('')}</tr></tfoot>
+  </table>
+  </body></html>`;
+}
+
+async function exportHTML(){
+  const [ps,as]=await Promise.all([window.db.collection('players').get(),window.db.collection('aportes').get()]);
+  const pl=ps.docs.map(d=>({id:d.id,...d.data()}));
+  const ap={};as.docs.forEach(d=>ap[d.id]=d.data());
+  if(!pl.length){toast('Sin jugadores',true);return;}
+  const html=await buildReportHTML(pl,ap);
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=teamName+'_reporte.html';
+  a.click();
+  toast('✓ HTML descargado');
+}
+
+async function exportPDF(){
+  const [ps,as]=await Promise.all([window.db.collection('players').get(),window.db.collection('aportes').get()]);
+  const pl=ps.docs.map(d=>({id:d.id,...d.data()}));
+  const ap={};as.docs.forEach(d=>ap[d.id]=d.data());
+  if(!pl.length){toast('Sin jugadores',true);return;}
+  toast('Abriendo para imprimir como PDF...');
+  const html=await buildReportHTML(pl,ap);
+  const win=window.open('','_blank');
+  if(win){
+    win.document.write(html);
+    win.document.close();
+    setTimeout(()=>{win.print();},800);
+  } else {
+    toast('Activa las ventanas emergentes para el PDF',true);
   }
 }
 
