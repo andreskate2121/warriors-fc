@@ -323,6 +323,7 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 <div id="modal-wrap"></div>
 
 <!-- FIREBASE -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" onerror="showNoInternet()"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -707,7 +708,19 @@ async function savePlayerProfile(){
 
 function renderPlayerAportes(){
   const el=document.getElementById('main-content');
-  el.innerHTML=`<div class="stitle">⬡ Aportes del Equipo</div><div id="ap-content"><div class="empty"><div class="spin"></div></div></div>`;
+  el.innerHTML=`<div class="stitle">⬡ Aportes del Equipo</div>
+    <div class="cajabox" id="cj-mini" style="display:none">
+      <div style="font-size:11px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Total recaudado</div>
+      <div class="cajatotal" id="caja-total-val">$0</div>
+      <div class="cajasub" id="caja-meta-label"></div>
+      <div style="margin-top:10px"><div class="pbar" style="height:8px"><div class="pfill paid-bar" id="caja-bar" style="width:0%"></div></div></div>
+      <div class="caja-grid" style="margin-top:10px">
+        <div class="cajamini"><div class="cajamval tgg" id="cj-p">0</div><div class="cajamlbl">Pagaron</div></div>
+        <div class="cajamini"><div class="cajamval tgy" id="cj-pa">0</div><div class="cajamlbl">Parcial</div></div>
+        <div class="cajamini"><div class="cajamval tgr" id="cj-d">0</div><div class="cajamlbl">Sin pagar</div></div>
+      </div>
+    </div>
+    <div id="ap-list"></div>`;
   _uns.forEach((u,i)=>{if(i>0){try{u();}catch(e){}}}); // keep first (own data listener)
   // Listen players + aportes
   let players=[], aportes={};
@@ -984,6 +997,9 @@ async function adminSaveMeta(){
 
 function renderApList(players,aportes,isAdminView){
   const el=document.getElementById('ap-list');if(!el)return;
+  // Show mini caja for player view
+  const miniCaja=document.getElementById('cj-mini');
+  if(miniCaja)miniCaja.style.display='';
   if(!players.length){el.innerHTML='<div class="empty"><div class="empty-ico">💰</div><div>No hay jugadores</div></div>';updateCaja([],aportes);return;}
   const cuota=teamMeta&&players.length?Math.ceil(teamMeta/players.length):0;
   updateCaja(players,aportes);
@@ -1128,7 +1144,9 @@ function renderMatchList(ms){
         <span>${m.rival}</span>
       </div>
       <div style="font-size:11px;color:var(--mt);margin-top:3px">${m.date||''} · ${m.type||''} · ${m.home||''}${m.venue?' · '+m.venue:''}</div>
-      ${m.notes?`<div style="font-size:11px;color:var(--mt);margin-top:3px">${m.notes}</div>`:''}
+      ${m.goleadores?`<div style="font-size:11px;color:var(--g);margin-top:3px">⚽ ${m.goleadores}</div>`:''}
+      ${m.asistencias?`<div style="font-size:11px;color:var(--b);margin-top:2px">🎯 ${m.asistencias}</div>`:''}
+      ${m.notes?`<div style="font-size:11px;color:var(--mt);margin-top:2px">${m.notes}</div>`:''}
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
       <span class="rbadge ${rL[m.result]||'rd'}">${rT[m.result]||'—'}</span>
@@ -1142,8 +1160,8 @@ async function adminAddMatch(){
   if(!r){toast('Ingresa el rival',true);return;}
   const gf=+document.getElementById('pm-gf').value||0,ga=+document.getElementById('pm-ga').value||0;
   try{
-    await window.db.collection('matches').add({rival:r,date:document.getElementById('pm-d').value||new Date().toISOString().split('T')[0],gf,ga,result:gf>ga?'V':gf<ga?'D':'E',type:document.getElementById('pm-t').value,venue:document.getElementById('pm-v').value,home:document.getElementById('pm-h').value,notes:document.getElementById('pm-n').value,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    ['pm-r','pm-gf','pm-ga','pm-v','pm-n'].forEach(id=>document.getElementById(id).value='');
+    await window.db.collection('matches').add({rival:r,date:document.getElementById('pm-d').value||new Date().toISOString().split('T')[0],gf,ga,result:gf>ga?'V':gf<ga?'D':'E',type:document.getElementById('pm-t').value,venue:document.getElementById('pm-v').value,home:document.getElementById('pm-h').value,notes:document.getElementById('pm-n').value,goleadores:document.getElementById('pm-goleadores').value,asistencias:document.getElementById('pm-asistencias').value,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    ['pm-r','pm-gf','pm-ga','pm-v','pm-n','pm-goleadores','pm-asistencias'].forEach(id=>document.getElementById(id).value='');
     toast('Partido registrado ✓');
   }catch(e){toast('Error: '+e.message,true);}
 }
@@ -1301,10 +1319,12 @@ function closeModal(){document.getElementById('modal-wrap').innerHTML='';}
 function closeModalOv(e){if(e.target===e.currentTarget)closeModal();}
 
 // ── EXCEL EXPORTS ─────────────────────────────
-function tblExcel(html,fn){
-  const a=document.createElement('a');
-  a.href='data:application/vnd.ms-excel;base64,'+btoa(unescape(encodeURIComponent(`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body>${html}</body></html>`)));
-  a.download=fn;a.click();
+function tblExcel(rows, fn){
+  // rows = array of arrays [ [col1, col2, ...], ... ]
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+  XLSX.writeFile(wb, fn.replace('.xls','.xlsx'));
 }
 
 async function exportJugadoresExcel(){
@@ -1315,23 +1335,40 @@ async function exportJugadoresExcel(){
   const cuota=teamMeta&&pl.length?Math.ceil(teamMeta/pl.length):0;
   let maxPagos=0;
   pl.forEach(p=>{const pgs=(ap[p.cedula||p.id]||{pagos:[]}).pagos||[];if(pgs.length>maxPagos)maxPagos=pgs.length;});
-  let pagoHeaders='';
-  for(let i=1;i<=maxPagos;i++) pagoHeaders+=`<th>Pago ${i} Fecha</th><th>Pago ${i} Monto</th><th>Metodo</th>`;
-  let t=`<table border="1"><tr style="background:#2ecc71;color:#fff;font-weight:bold"><th>Foto</th><th>Identificacion</th><th>Nombre Completo</th><th># Camiseta</th><th>Nombre Camiseta</th><th>Total Aportado</th>${cuota?'<th>Cuota</th><th>Falta</th><th>Estado</th>':''}${pagoHeaders}</tr>`;
+
+  // Header row
+  const header=['Foto','Identificación','Nombre Completo','# Camiseta','Nombre Camiseta','Total Aportado'];
+  if(cuota){header.push('Cuota','Falta','Estado');}
+  for(let i=1;i<=maxPagos;i++){header.push(`Pago ${i} - Fecha`,`Pago ${i} - Monto`,`Pago ${i} - Método`,`Pago ${i} - Nota`);}
+  
+  const rows=[header];
   pl.forEach(p=>{
     const ced=p.cedula||p.id;
     const pgs=(ap[ced]||{pagos:[]}).pagos||[];
     const total=pgs.reduce((s,x)=>s+(+x.monto||0),0);
     const falta=cuota?Math.max(0,cuota-total):0;
-    const estado=!cuota?'-':total>=cuota?'Pago completo':total>0?'Pago parcial':'Sin pagar';
-    const fotoCell=p.fotoURL?`<td><img src="${p.fotoURL}" width="55" height="55" style="border-radius:50%"></td>`:`<td style="background:#2ecc71;color:#fff;font-weight:bold;text-align:center">${(p.nombre||ced).split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</td>`;
-    let pagoCells='';
-    for(let i=0;i<maxPagos;i++){const pg=pgs[i];pagoCells+=pg?`<td>${pg.fecha||''}</td><td>$${Number(pg.monto||0).toLocaleString('es-CO')}</td><td>${pg.metodo||''}</td>`:'<td></td><td></td><td></td>';}
-    t+=`<tr>${fotoCell}<td>${ced}</td><td>${p.nombre||''}</td><td>${p.numCamiseta||''}</td><td>${p.nombreCamiseta||''}</td><td style="font-weight:bold">$${Number(total).toLocaleString('es-CO')}</td>${cuota?`<td>$${Number(cuota).toLocaleString('es-CO')}</td><td style="color:${falta>0?'red':'green'}">$${Number(falta).toLocaleString('es-CO')}</td><td style="font-weight:bold;color:${total>=cuota?'green':total>0?'darkorange':'red'}">${estado}</td>`:''}${pagoCells}</tr>`;
+    const estado=!cuota?'-':total>=cuota?'Pagó completo':total>0?'Pago parcial':'Sin pagar';
+    const row=[
+      p.fotoURL?'Ver foto en app':'-',
+      ced, p.nombre||'', p.numCamiseta||'', p.nombreCamiseta||'',
+      total
+    ];
+    if(cuota){row.push(cuota,falta,estado);}
+    for(let i=0;i<maxPagos;i++){
+      const pg=pgs[i];
+      if(pg){row.push(pg.fecha||'',+pg.monto||0,pg.metodo||'',pg.nota||'');}
+      else{row.push('','','','');}
+    }
+    rows.push(row);
   });
+
+  // Total row
   const totalG=pl.reduce((s,p)=>{const ced=p.cedula||p.id;return s+(ap[ced]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;},0);
-  t+=`<tr style="font-weight:bold;background:#e8f5e9"><td colspan="5" style="text-align:right">TOTAL RECAUDADO</td><td style="color:green">$${Number(totalG).toLocaleString('es-CO')}</td>${cuota?`<td>$${Number(cuota*pl.length).toLocaleString('es-CO')}</td><td style="color:red">$${Number(Math.max(0,cuota*pl.length-totalG)).toLocaleString('es-CO')}</td><td></td>`:''}${Array(maxPagos*3).fill('<td></td>').join('')}</tr></table>`;
-  tblExcel(t,teamName+'_jugadores_aportes.xls');
+  const totRow=['','','','','TOTAL RECAUDADO',totalG];
+  if(cuota){totRow.push(cuota*pl.length,Math.max(0,cuota*pl.length-totalG),'');}
+  rows.push(totRow);
+
+  tblExcel(rows, teamName+'_jugadores_aportes.xlsx');
   toast('Excel descargado ✓');
 }
 
@@ -1340,9 +1377,11 @@ async function exportAportesExcel(){ exportJugadoresExcel(); }
 
 async function exportEstadisticasExcel(){
   const pl=(await window.db.collection('players').get()).docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.stats?.goals||0)-(a.stats?.goals||0));
-  let t=`<table border="1"><tr style="background:#2ecc71;color:#fff;font-weight:bold"><th>#</th><th>Jugador</th><th>Cédula</th><th>Posición</th><th>PJ</th><th>Goles</th><th>Asistencias</th><th>Amarillas</th><th>Rojas</th><th>Minutos</th></tr>`;
-  pl.forEach((p,i)=>t+=`<tr><td>${i+1}</td><td>${p.nombre||''}</td><td>${p.cedula||p.id}</td><td>${p.pos||''}</td><td>${p.stats?.games||0}</td><td>${p.stats?.goals||0}</td><td>${p.stats?.assists||0}</td><td>${p.stats?.yellow||0}</td><td>${p.stats?.red||0}</td><td>${p.stats?.mins||0}</td></tr>`);
-  t+='</table>';tblExcel(t,teamName+'_estadisticas.xls');toast('Excel descargado ✓');
+  if(!pl.length){toast('Sin jugadores',true);return;}
+  const rows=[['#','Jugador','Cédula','Posición','Partidos Jugados','Goles','Asistencias','Amarillas','Rojas','Minutos']];
+  pl.forEach((p,i)=>rows.push([i+1,p.nombre||'',p.cedula||p.id,p.pos||'',p.stats?.games||0,p.stats?.goals||0,p.stats?.assists||0,p.stats?.yellow||0,p.stats?.red||0,p.stats?.mins||0]));
+  tblExcel(rows,teamName+'_estadisticas.xlsx');
+  toast('Excel de estadísticas descargado ✓');
 }
 </script>
 </body>
