@@ -410,14 +410,29 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 <div id="scr-first" style="display:none">
   <div class="fbox">
     <div class="titulo">⚽ Bienvenido</div>
-    <div class="subtit">Completa tu perfil para continuar.<br>Tu nombre e identificación no podrán cambiarse después.</div>
+    <div class="subtit">Completa tu perfil para continuar.<br>Tu identificación no podrá cambiarse después.</div>
     <div class="card">
-      <div class="fg" style="margin-bottom:12px"><label>Identificación (no editable)</label><input id="ft-ced" readonly /></div>
-      <div class="fg" style="margin-bottom:12px"><label>Nombre completo *</label><input id="ft-nombre" placeholder="Nombre y apellidos completos" /></div>
-      <div class="grid3" style="margin-top:4px;gap:10px">
+      <div class="fg" style="margin-bottom:12px">
+        <label>Identificación (no editable)</label>
+        <input id="ft-ced" readonly />
+      </div>
+      <div class="grid2" style="margin-bottom:12px;gap:10px">
+        <div class="fg"><label>Nombres *</label><input id="ft-nombres" placeholder="Ej: Andrés Eduardo" /></div>
+        <div class="fg"><label>Apellidos *</label><input id="ft-apellidos" placeholder="Ej: Oviedo Barrios" /></div>
+      </div>
+      <div class="grid3" style="gap:10px;margin-bottom:12px">
         <div class="fg"><label>Fecha de nacimiento</label><input type="date" id="ft-fnac" /></div>
-        <div class="fg"><label># Camiseta</label><input type="number" id="ft-num" placeholder="10" min="1" max="99" /></div>
-        <div class="fg"><label>Nombre camiseta</label><input id="ft-ncam" placeholder="APELLIDO" maxlength="12" /></div>
+        <div class="fg"><label>Número en camiseta</label><input type="number" id="ft-num" placeholder="10" min="1" max="99" /></div>
+        <div class="fg"><label>Nombre en camiseta</label><input id="ft-ncam" placeholder="APELLIDO" maxlength="12" /></div>
+      </div>
+      <div class="fg" style="margin-bottom:14px">
+        <label>Posición</label>
+        <select id="ft-pos">
+          <option value="POR">Portero (POR)</option>
+          <option value="DEF">Defensa (DEF)</option>
+          <option value="MED" selected>Mediocampista (MED)</option>
+          <option value="DEL">Delantero (DEL)</option>
+        </select>
       </div>
       <div class="factions"><button class="btn bg" onclick="saveFirstTime()">Guardar y entrar →</button></div>
     </div>
@@ -608,6 +623,14 @@ let teamMeta=0, teamName='Warriors FC', selForm='';
 let _uns=[];
 
 const fmt  = n=>'$'+Number(n||0).toLocaleString('es-CO');
+const calcEdad = fnac=>{
+  if(!fnac) return '—';
+  const hoy=new Date(), nac=new Date(fnac);
+  let edad=hoy.getFullYear()-nac.getFullYear();
+  const m=hoy.getMonth()-nac.getMonth();
+  if(m<0||(m===0&&hoy.getDate()<nac.getDate())) edad--;
+  return edad>0?edad+' años':'—';
+};
 const ini  = n=>(n||'?').trim().split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
 const clr  = c=>['#e74c3c','#3498db','#9b59b6','#e67e22','#1abc9c','#e91e63','#ff5722','#2196f3','#00bcd4','#8bc34a','#ff9800','#607d8b'][parseInt(c||'0')%12];
 
@@ -620,6 +643,137 @@ function toast(msg,err=false){
 
 function hide(id){document.getElementById(id).style.display='none';}
 function show(id,flex=false){document.getElementById(id).style.display=flex?'flex':'';}
+
+function showBlocked(){
+  hide('scr-login');hide('scr-first');hide('app');
+  document.getElementById('scr-blocked').style.display='flex';
+}
+
+// ── LOGIN ──────────────────────────────────────
+let isAdmin=false;
+function doLoginBtn(){
+  const btn=document.getElementById('btn-entrar');
+  if(btn){btn.textContent='Entrando...';btn.disabled=true;}
+  doLogin().catch(e=>{
+    console.error('doLogin error:',e);
+    setErr('Error: '+e.message);
+  }).finally(()=>{
+    setTimeout(()=>{
+      if(btn&&btn.disabled){btn.textContent='Entrar ⚽';btn.disabled=false;}
+    },3000);
+  });
+}
+function toggleAdmin(){
+  isAdmin=!isAdmin;
+  const cedInput=document.getElementById('l-ced');
+  const passField=document.getElementById('l-passfield');
+  const subtitle=document.getElementById('l-subtitle');
+  const cedLabel=document.querySelector('#scr-login .fi label');
+  if(isAdmin){
+    passField.style.display='';
+    subtitle.textContent='Acceso administrador';
+    cedInput.placeholder='Correo del administrador';
+    cedInput.type='email';
+    cedInput.inputMode='email';
+    cedInput.value='andreskate2121@gmail.com';
+    if(cedLabel) cedLabel.textContent='Correo electrónico';
+  } else {
+    passField.style.display='none';
+    subtitle.textContent='Ingresa con tu número de identificación';
+    cedInput.placeholder='Ej: 1234567890';
+    cedInput.type='text';
+    cedInput.inputMode='numeric';
+    cedInput.value='';
+    if(cedLabel) cedLabel.textContent='Número de identificación';
+  }
+}
+
+async function doLogin(){
+  // Check Firebase is ready
+  if(!window.auth){
+    setErr('Conectando con Firebase... intenta de nuevo en unos segundos.');
+    setTimeout(()=>{if(window.auth)clearErr();},3000);
+    return;
+  }
+  const c=document.getElementById('l-ced').value.trim();
+  if(!c){setErr('Ingresa tu número de identificación');return;}
+  clearErr();
+  if(isAdmin){
+    const email=document.getElementById('l-ced').value.trim();
+    const p=document.getElementById('l-pass').value;
+    if(!p){setErr('Ingresa la contraseña');return;}
+    try{
+      const result = await window.auth.signInWithEmailAndPassword(email,p);
+      console.log('Login success:', result.user.uid);
+    }
+    catch(e){
+      console.log('Login error:',e.code, e.message);
+      if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'||e.code==='auth/invalid-login-credentials'){
+        setErr('Contraseña incorrecta. Verifica tu contraseña.');
+      }
+      else if(e.code==='auth/user-not-found'){setErr('Correo no registrado en Firebase.');}
+      else if(e.code==='auth/invalid-email'){setErr('Formato de correo inválido.');}
+      else if(e.code==='auth/email-not-verified'){setErr('Debes verificar tu correo primero.');}
+      else if(e.code==='auth/too-many-requests'){setErr('Demasiados intentos. Espera unos minutos.');}
+      else if(e.code==='auth/network-request-failed'){setErr('Error de red. Verifica tu conexión.');}
+      else{setErr('Error ('+e.code+'): '+e.message);}
+    }
+    return;
+  }
+  // player
+  const snap=await window.db.doc('players/'+c).get().catch(()=>null);
+  if(!snap||!snap.exists){setErr('Identificación no registrada. Contacta al administrador.');return;}
+  if(snap.data().blocked){setErr('Tu cuenta está bloqueada. Contacta al administrador.');return;}
+  const email=c+'@jugador.fc';
+  try{await window.auth.signInWithEmailAndPassword(email,c);}
+  catch(e){
+    if(e.code==='auth/user-not-found'||e.code==='auth/invalid-credential'){
+      try{await window.auth.createUserWithEmailAndPassword(email,c);}
+      catch(e2){setErr('Error: '+e2.message);}
+    } else setErr('Error al ingresar. Intenta de nuevo.');
+  }
+}
+function setErr(m){const e=document.getElementById('l-err');e.textContent=m;e.style.display='block';}
+function clearErr(){document.getElementById('l-err').style.display='none';}
+
+function doLogout(){
+  _uns.forEach(u=>{try{u();}catch(e){}});_uns=[];
+  window.auth.signOut();
+  hide('app');hide('scr-first');hide('scr-blocked');
+  document.getElementById('scr-login').style.display='flex';
+}
+
+// ── FIRST TIME ─────────────────────────────────
+function showFirstTime(){
+  hide('app');hide('scr-login');
+  document.getElementById('ft-ced').value=ced;
+  document.getElementById('scr-first').style.display='flex';
+}
+
+async function saveFirstTime(){
+  const nombres=document.getElementById('ft-nombres').value.trim();
+  const apellidos=document.getElementById('ft-apellidos').value.trim();
+  if(!nombres){toast('Ingresa tus nombres',true);return;}
+  if(!apellidos){toast('Ingresa tus apellidos',true);return;}
+  const nombre=nombres+' '+apellidos;
+  const pos=document.getElementById('ft-pos')?.value||'MED';
+  const ncam=document.getElementById('ft-ncam').value.toUpperCase().trim()||apellidos.split(' ')[0].toUpperCase();
+  try{
+    await window.db.doc('players/'+ced).set({
+      cedula:ced, nombre, nombres, apellidos, pos,
+      fechaNacimiento:document.getElementById('ft-fnac').value,
+      numCamiseta:document.getElementById('ft-num').value||'',
+      nombreCamiseta:ncam,
+      profileCompleted:true, blocked:false,
+      stats:{goals:0,assists:0,games:0,yellow:0,red:0,mins:0},
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    const snap=await window.db.doc('players/'+ced).get();
+    pData=snap.data();
+    hide('scr-first');
+    setupPlayer();
+  }catch(e){toast('Error: '+e.message,true);}
+}
 
 function showBlocked(){
   hide('scr-login');hide('scr-first');hide('app');
@@ -799,6 +953,7 @@ function renderPlayerPerfil(){
           <span class="chip cg">⚽ ${p.pos||'MED'}</span>
           <span class="chip cb">🪪 ${p.cedula||ced}</span>
           ${p.fechaNacimiento?`<span class="chip cy">🎂 ${p.fechaNacimiento}</span>`:''}
+          ${p.fechaNacimiento?`<span class="chip" style="background:rgba(155,89,182,.2);color:#9b59b6;">👤 ${calcEdad(p.fechaNacimiento)}</span>`:''}
         </div>
       </div>
     </div>
@@ -811,8 +966,12 @@ function renderPlayerPerfil(){
       </div>
       <div class="grid3" style="margin-top:10px">
         <div class="fg"><label>Fecha de nacimiento</label><input type="date" id="pf-fnac" value="${p.fechaNacimiento||''}" /></div>
-        <div class="fg"><label># Camiseta</label><input type="number" id="pf-num" value="${p.numCamiseta||''}" min="1" max="99" /></div>
+        <div class="fg"><label>Edad</label><input value="${calcEdad(p.fechaNacimiento)}" readonly style="color:var(--gold);font-weight:600;" /></div>
+        <div class="fg"><label>Número en camiseta</label><input type="number" id="pf-num" value="${p.numCamiseta||''}" min="1" max="99" /></div>
+      </div>
+      <div class="grid2" style="margin-top:10px">
         <div class="fg"><label>Nombre en camiseta</label><input id="pf-ncam" value="${p.nombreCamiseta||''}" placeholder="APELLIDO" maxlength="12" /></div>
+        <div class="fg"><label>Posición</label><select id="pf-pos"><option value="POR"${p.pos==='POR'?' selected':''}>Portero (POR)</option><option value="DEF"${p.pos==='DEF'?' selected':''}>Defensa (DEF)</option><option value="MED"${p.pos==='MED'?' selected':''}>Mediocampista (MED)</option><option value="DEL"${p.pos==='DEL'?' selected':''}>Delantero (DEL)</option></select></div>
       </div>
       <div class="factions"><button class="btn bg" onclick="savePlayerProfile()">Guardar cambios</button></div>
     </div>`;
@@ -824,6 +983,7 @@ async function savePlayerProfile(){
       fechaNacimiento:document.getElementById('pf-fnac').value,
       numCamiseta:document.getElementById('pf-num').value,
       nombreCamiseta:document.getElementById('pf-ncam').value.toUpperCase().trim(),
+      pos:document.getElementById('pf-pos')?.value||'MED',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp()
     });
     toast('Perfil guardado ✓');
@@ -991,15 +1151,12 @@ function adminJugadores(){
       <button class="btn bb bsm" onclick="exportEstadisticasExcel()" style="background:var(--p)">📊 Stats Excel</button>
     </div>
     <div class="card">
-      <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--mt)">Registrar nuevo jugador</div>
-      <div class="grid3">
-        <div class="fg"><label>Cédula / ID *</label><input id="nj-ced" placeholder="Número de identificación" inputmode="numeric"/></div>
-        <div class="fg"><label>Nombre completo *</label><input id="nj-nom" placeholder="Nombre y apellido"/></div>
-        <div class="fg"><label>Posición</label>
-          <select id="nj-pos"><option value="POR">Portero (POR)</option><option value="DEF">Defensa (DEF)</option><option value="MED" selected>Mediocampista (MED)</option><option value="DEL">Delantero (DEL)</option></select>
-        </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--mt)">Activar jugador</div>
+      <div style="font-size:11px;color:var(--mt);margin-bottom:12px;">El jugador ingresa con su cédula como usuario y contraseña, y completa sus datos la primera vez.</div>
+      <div class="grid2">
+        <div class="fg"><label>Cédula / Identificación *</label><input id="nj-ced" placeholder="Número de identificación" inputmode="numeric" onkeydown="if(event.key==='Enter')adminAddPlayer()"/></div>
+        <div class="fg" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn bg" onclick="adminAddPlayer()">✓ Activar jugador</button></div>
       </div>
-      <div class="factions"><button class="btn bg" onclick="adminAddPlayer()">+ Registrar jugador</button></div>
     </div>
     <div id="pgrid-wrap" class="pgrid"></div>`;
 
@@ -1024,92 +1181,29 @@ function renderPGrid(players){
       <div class="pname">${p.nombre||'Sin nombre'}</div>
       <span class="ppos pos-${p.pos||'MED'}">${p.pos||'MED'}</span>
       <div class="pced">${c}</div>
+      ${p.fechaNacimiento?`<div style="font-size:10px;color:var(--gold);margin-top:2px;">👤 ${calcEdad(p.fechaNacimiento)}</div>`:''}
       ${!p.profileCompleted?`<div style="font-size:10px;color:var(--y);margin-top:4px">⏳ Pendiente de registro</div>`:''}
     </div>`;
   }).join('');
 }
 
 async function adminAddPlayer(){
-  const c=document.getElementById('nj-ced').value.trim();
-  const n=document.getElementById('nj-nom').value.trim();
-  if(!c){toast('Ingresa la cédula',true);return;}
-  if(!n){toast('Ingresa el nombre',true);return;}
-  const existing=await window.db.doc('players/'+c).get();
-  if(existing.exists){toast('Ya existe un jugador con esa cédula',true);return;}
+  const ced=document.getElementById('nj-ced').value.trim();
+  if(!ced){toast('Ingresa la cédula',true);return;}
+  const existing=await window.db.doc('players/'+ced).get();
+  if(existing.exists){toast('Esta cédula ya está registrada',true);return;}
   try{
-    await window.db.doc('players/'+c).set({
-      cedula:c, nombre:n, pos:document.getElementById('nj-pos').value,
-      numCamiseta:'', nombreCamiseta:n.split(' ')[0].toUpperCase(),
+    await window.db.doc('players/'+ced).set({
+      cedula:ced, nombre:'', pos:'MED',
+      numCamiseta:'', nombreCamiseta:'',
       fechaNacimiento:'', fotoURL:'',
       blocked:false, profileCompleted:false,
       stats:{goals:0,assists:0,games:0,yellow:0,red:0,mins:0},
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    await window.db.doc('aportes/'+c).set({pagos:[]},{merge:true});
+    await window.db.doc('aportes/'+ced).set({pagos:[]},{merge:true});
     document.getElementById('nj-ced').value='';
-    document.getElementById('nj-nom').value='';
-    toast(`Jugador registrado. Puede ingresar con: ${c} ✓`);
-  }catch(e){toast('Error: '+e.message,true);}
-}
-
-function adminEditPlayer(c){
-  window.db.doc('players/'+c).get().then(snap=>{
-    if(!snap.exists)return;
-    const p=snap.data();
-    showModal(`Editar — ${p.nombre||c}`,`
-      <div class="fg" style="margin-bottom:10px"><label>Identificación</label><input id="ep-ced" value="${p.cedula||c}" /></div>
-      <div class="fg" style="margin-bottom:10px"><label>Nombre completo</label><input id="ep-nom" value="${p.nombre||''}" /></div>
-      <div class="grid3" style="margin-bottom:10px;gap:10px">
-        <div class="fg"><label>Fecha nacimiento</label><input type="date" id="ep-fnac" value="${p.fechaNacimiento||''}" /></div>
-        <div class="fg"><label># Camiseta</label><input type="number" id="ep-num" value="${p.numCamiseta||''}" min="1" max="99"/></div>
-        <div class="fg"><label>Nombre camiseta</label><input id="ep-ncam" value="${p.nombreCamiseta||''}" maxlength="12"/></div>
-      </div>
-      <div class="fg" style="margin-bottom:14px"><label>Posición</label>
-        <select id="ep-pos"><option value="POR"${p.pos==='POR'?' selected':''}>Portero</option><option value="DEF"${p.pos==='DEF'?' selected':''}>Defensa</option><option value="MED"${p.pos==='MED'?' selected':''}>Mediocampista</option><option value="DEL"${p.pos==='DEL'?' selected':''}>Delantero</option></select>
-      </div>
-      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-        <button class="btn ${p.blocked?'bg':'br_'}" onclick="toggleBlock('${c}',${!p.blocked})">${p.blocked?'🔓 Desbloquear':'🔒 Bloquear'}</button>
-        <button class="btn br_" onclick="adminDeletePlayer('${c}')">🗑️ Eliminar jugador</button>
-      </div>
-      <div class="factions">
-        <button class="btn bo" onclick="closeModal()">Cancelar</button>
-        <button class="btn bg" onclick="saveEditPlayer('${c}')">Guardar cambios</button>
-      </div>`);
-  });
-}
-
-async function saveEditPlayer(oldCed){
-  const newCed=document.getElementById('ep-ced').value.trim();
-  const nom=document.getElementById('ep-nom').value.trim();
-  if(!newCed||!nom){toast('Cédula y nombre son obligatorios',true);return;}
-  try{
-    const data={
-      cedula:newCed, nombre:nom,
-      fechaNacimiento:document.getElementById('ep-fnac').value,
-      numCamiseta:document.getElementById('ep-num').value,
-      nombreCamiseta:document.getElementById('ep-ncam').value.toUpperCase().trim(),
-      pos:document.getElementById('ep-pos').value,
-      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-    };
-    if(newCed!==oldCed){
-      // migrate document
-      const oldSnap=await window.db.doc('players/'+oldCed).get();
-      const oldAp=await window.db.doc('aportes/'+oldCed).get();
-      await window.db.doc('players/'+newCed).set({...oldSnap.data(),...data});
-      await window.db.doc('aportes/'+newCed).set(oldAp.exists?oldAp.data():{pagos:[]});
-      await window.db.doc('players/'+oldCed).delete();
-      await window.db.doc('aportes/'+oldCed).delete();
-    } else {
-      await window.db.doc('players/'+oldCed).update(data);
-    }
-    closeModal();toast('Jugador actualizado ✓');
-  }catch(e){toast('Error: '+e.message,true);}
-}
-
-async function toggleBlock(c,block){
-  try{
-    await window.db.doc('players/'+c).update({blocked:block});
-    closeModal();toast(block?'Jugador bloqueado':'Jugador desbloqueado ✓');
+    toast('✓ Jugador '+ced+' activado. Ya puede ingresar con su cédula.');
   }catch(e){toast('Error: '+e.message,true);}
 }
 
@@ -1485,7 +1579,7 @@ function adminEstadisticas(){
     const el=document.getElementById('st-wrap');if(!el)return;
     if(!pl.length){el.innerHTML='<div class="empty"><div class="empty-ico">📊</div><div>Sin datos</div></div>';return;}
     el.innerHTML=`<div class="card" style="overflow-x:auto"><table class="stbl">
-      <thead><tr><th>#</th><th>Jugador</th><th>Pos</th><th>PJ</th><th>⚽ Goles</th><th>🎯 Asist</th><th>🟡</th><th>🔴</th><th>⏱ Min</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>Jugador</th><th>Pos</th><th>Edad</th><th>PJ</th><th>⚽ Goles</th><th>🎯 Asist</th><th>🟡</th><th>🔴</th><th>⏱ Min</th><th></th></tr></thead>
       <tbody>${pl.map((p,i)=>`<tr>
         <td style="color:var(--mt);font-size:12px">${i+1}</td>
         <td><div style="display:flex;align-items:center;gap:8px">
@@ -1493,6 +1587,7 @@ function adminEstadisticas(){
             ${p.fotoURL?`<img src="${p.fotoURL}" style="width:100%;height:100%;object-fit:cover">`:ini(p.nombre||p.id)}
           </div><span>${p.nombre||p.id}</span></div></td>
         <td><span class="ppos pos-${p.pos||'MED'}" style="font-size:10px">${p.pos||'MED'}</span></td>
+        <td style="color:var(--gold)">${calcEdad(p.fechaNacimiento)}</td>
         <td>${p.stats?.games||0}</td>
         <td style="font-weight:600;color:var(--g)">${p.stats?.goals||0}</td>
         <td>${p.stats?.assists||0}</td>
@@ -1674,6 +1769,7 @@ async function buildReportHTML(pl, ap){
     rows+=`<tr>
       <td style="text-align:center;padding:4px;">${fotoCell}</td>
       <td>${ced}</td><td><b>${p.nombre||''}</b></td>
+      <td style="text-align:center;color:#f39c12;font-weight:bold;">${calcEdad(p.fechaNacimiento)}</td>
       <td style="text-align:center;">${p.numCamiseta||''}</td>
       <td>${p.nombreCamiseta||''}</td>
       ${pagoCells}
@@ -1713,7 +1809,7 @@ async function buildReportHTML(pl, ap){
     <div class="meta-item"><div class="meta-val">${pl.length}</div><div class="meta-lbl">Jugadores</div></div>
   </div>
   <table>
-    <thead><tr><th width="80">Foto</th><th>Identificación</th><th>Nombre</th><th>#</th><th>Camiseta</th>${pagoHeaders}</tr></thead>
+    <thead><tr><th width="80">Foto</th><th>Identificación</th><th>Nombre</th><th>Edad</th><th>#</th><th>Camiseta</th>${pagoHeaders}</tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr class="total-row"><td colspan="4" style="text-align:right;">TOTAL RECAUDADO:</td><td colspan="2" style="color:#27ae60;font-weight:bold;">$${Number(totalG).toLocaleString('es-CO')}</td>${Array(maxPagos*2).fill('<td></td>').join('')}</tr></tfoot>
   </table>
