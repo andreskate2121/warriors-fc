@@ -509,8 +509,13 @@ let isAdmin=false;
 function doLoginBtn(){
   const btn=document.getElementById('btn-entrar');
   if(btn){btn.textContent='Entrando...';btn.disabled=true;}
-  doLogin().finally(()=>{
-    if(btn){btn.textContent='Entrar ⚽';btn.disabled=false;}
+  doLogin().catch(e=>{
+    console.error('doLogin error:',e);
+    setErr('Error: '+e.message);
+  }).finally(()=>{
+    setTimeout(()=>{
+      if(btn&&btn.disabled){btn.textContent='Entrar ⚽';btn.disabled=false;}
+    },3000);
   });
 }
 function toggleAdmin(){
@@ -625,6 +630,9 @@ async function saveFirstTime(){
 //  PLAYER VIEW
 // ══════════════════════════════════════════════
 function setupPlayer(){
+  ['scr-load','scr-login','scr-first','scr-blocked'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.style.display='none';
+  });
   document.getElementById('app').style.display='flex';
   updateTopbar(pData?.nombre||'Jugador', pData?.fotoURL||null, false);
   renderPlayerTabs('perfil');
@@ -770,11 +778,21 @@ function updateTopbar(name,foto,isAdm){
 //  ADMIN VIEW
 // ══════════════════════════════════════════════
 function setupAdmin(){
-  document.getElementById('app').style.display='flex';
-  updateTopbar('Administrador',null,true);
-  renderAdminTabs('jugadores');
-  // live team config
-  window.db.doc('config/team').onSnapshot(d=>{if(d.exists){teamMeta=d.data().meta||0;teamName=d.data().name||'Warriors FC';}});
+  try{
+    ['scr-load','scr-login','scr-first','scr-blocked'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.style.display='none';
+    });
+    document.getElementById('app').style.display='flex';
+    updateTopbar('Administrador',null,true);
+    renderAdminTabs('jugadores');
+    window.db.doc('config/team').onSnapshot(d=>{
+      if(d.exists){teamMeta=d.data().meta||0;teamName=d.data().name||'Warriors FC';}
+    });
+  }catch(e){
+    console.error('setupAdmin error:',e);
+    document.getElementById('scr-load').innerHTML='<div style="padding:30px;text-align:center;color:#e74c3c">Error: '+e.message+'<br><br><button onclick="location.reload()" style="padding:10px 20px;background:#2ecc71;color:#fff;border:none;border-radius:8px;cursor:pointer">Recargar</button></div>';
+    document.getElementById('scr-load').style.display='flex';
+  }
 }
 
 function renderAdminTabs(t){
