@@ -451,7 +451,7 @@ function startApp(){
   // trigger auth listener
   auth_.onAuthStateChanged(async u=>{
     hide('scr-load');
-    if(!u){show('scr-login');
+    if(!u){document.getElementById('scr-login').style.display='flex';
       try{const d=await db_.doc('config/team').get();if(d.exists&&d.data().name)document.getElementById('l-teamname').textContent=d.data().name;}catch(e){}
       return;}
     CU=u;
@@ -465,7 +465,7 @@ function startApp(){
     else{
       role='player';ced=u.email.replace('@jugador.fc','');
       const snap=await db_.doc('players/'+ced).get();
-      if(!snap.exists){await auth_.signOut();show('scr-login');return;}
+      if(!snap.exists){await auth_.signOut();document.getElementById('scr-login').style.display='flex';return;}
       pData=snap.data();
       if(pData.blocked){showBlocked();return;}
       if(!pData.profileCompleted){showFirstTime();return;}
@@ -590,14 +590,14 @@ function doLogout(){
   _uns.forEach(u=>{try{u();}catch(e){}});_uns=[];
   window.auth.signOut();
   hide('app');hide('scr-first');hide('scr-blocked');
-  show('scr-login');
+  document.getElementById('scr-login').style.display='flex';
 }
 
 // ── FIRST TIME ─────────────────────────────────
 function showFirstTime(){
   hide('app');hide('scr-login');
   document.getElementById('ft-ced').value=ced;
-  show('scr-first');
+  document.getElementById('scr-first').style.display='flex';
 }
 
 async function saveFirstTime(){
@@ -625,7 +625,7 @@ async function saveFirstTime(){
 //  PLAYER VIEW
 // ══════════════════════════════════════════════
 function setupPlayer(){
-  show('app');
+  document.getElementById('app').style.display='flex';
   updateTopbar(pData?.nombre||'Jugador', pData?.fotoURL||null, false);
   renderPlayerTabs('perfil');
   // Live listener on own data
@@ -770,7 +770,7 @@ function updateTopbar(name,foto,isAdm){
 //  ADMIN VIEW
 // ══════════════════════════════════════════════
 function setupAdmin(){
-  show('app');
+  document.getElementById('app').style.display='flex';
   updateTopbar('Administrador',null,true);
   renderAdminTabs('jugadores');
   // live team config
