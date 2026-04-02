@@ -334,7 +334,7 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 .empty-ico{font-size:34px;margin-bottom:10px;}
 .exbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
 .tgg{color:var(--g);}.tgy{color:var(--y);}.tgr{color:var(--r);}
-#photo-input{display:none;}
+#photo-input-camera,#photo-input-gallery{display:none;}
 
 /* BLOCKED SCREEN */
 #scr-blocked{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;display:none;}
@@ -431,7 +431,7 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 </div>
 
 <div class="toast" id="toast"></div>
-<input type="file" id="photo-input" accept="image/*" onchange="handlePhotoUpload(this)">
+<input type="file" id="photo-input-camera" accept="image/*" capture="environment" onchange="handlePhotoUpload(this)" style="display:none"><input type="file" id="photo-input-gallery" accept="image/*" onchange="handlePhotoUpload(this)" style="display:none">
 <div id="modal-wrap"></div>
 
 <!-- FIREBASE -->
@@ -773,11 +773,14 @@ function renderPlayerPerfil(){
   document.getElementById('main-content').innerHTML=`
     <div class="carnet">
       <div class="c-photo-wrap">
-        <div class="c-photo" onclick="document.getElementById('photo-input').click()">
+        <div class="c-photo" onclick="document.getElementById('photo-input-gallery').click()">
           ${p.fotoURL?`<img src="${p.fotoURL}" onerror="this.parentElement.innerHTML='<span class=c-ini>${ini(p.nombre||'?')}</span>'">`:`<span class="c-ini">${ini(p.nombre||'?')}</span>`}
-          <div class="ov">📷<br>Cambiar foto</div>
+          <div class="ov">📷<br>Toca para cambiar</div>
         </div>
-        <div class="c-hint" onclick="document.getElementById('photo-input').click()">📷 Cambiar foto</div>
+        <div style="display:flex;gap:6px;justify-content:center;margin-top:6px;">
+          <div class="c-hint" onclick="openCamera()" style="background:rgba(192,57,43,0.2);padding:5px 10px;border-radius:6px;border:1px solid rgba(192,57,43,0.3);font-size:11px;">📷 Cámara</div>
+          <div class="c-hint" onclick="document.getElementById('photo-input-gallery').click()" style="background:rgba(52,152,219,0.2);padding:5px 10px;border-radius:6px;border:1px solid rgba(52,152,219,0.3);font-size:11px;">🖼️ Galería</div>
+        </div>
       </div>
       <div class="c-info">
         <div class="c-num">#${p.numCamiseta||'00'}</div>
@@ -820,32 +823,41 @@ async function savePlayerProfile(){
 
 function renderPlayerAportes(){
   const el=document.getElementById('main-content');
-  el.innerHTML=`<div class="stitle">⬡ Aportes del Equipo</div>
+  el.innerHTML=`
+    <div class="stitle">⬡ Aportes del Equipo</div>
     <div class="cajabox" id="cj-mini" style="display:none">
       <div style="font-size:11px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Total recaudado</div>
       <div class="cajatotal" id="caja-total-val">$0</div>
       <div class="cajasub" id="caja-meta-label"></div>
       <div style="margin-top:10px"><div class="pbar" style="height:8px"><div class="pfill paid-bar" id="caja-bar" style="width:0%"></div></div></div>
       <div class="caja-grid" style="margin-top:10px">
-        <div class="cajamini"><div class="cajamval tgg" id="cj-p">0</div><div class="cajamlbl">Pagaron</div></div>
-        <div class="cajamini"><div class="cajamval tgy" id="cj-pa">0</div><div class="cajamlbl">Parcial</div></div>
-        <div class="cajamini"><div class="cajamval tgr" id="cj-d">0</div><div class="cajamlbl">Sin pagar</div></div>
+        <div class="cajamini"><div class="cajamval tgg" id="cj-p">0</div><div class="cajamlbl">Con abonos</div></div>
+        <div class="cajamini"><div class="cajamval tgy" id="cj-pa">$0</div><div class="cajamlbl">Falta</div></div>
+        <div class="cajamini"><div class="cajamval tgr" id="cj-d">0</div><div class="cajamlbl">Sin abonar</div></div>
       </div>
     </div>
     <div id="ap-list"></div>`;
-  _uns.forEach((u,i)=>{if(i>0){try{u();}catch(e){}}}); // keep first (own data listener)
-  // Listen players + aportes
-  let players=[], aportes={};
-  const u1=window.db.collection('players').onSnapshot(s=>{players=s.docs.map(d=>({id:d.id,...d.data()}));renderApList(players,aportes,false);});
-  const u2=window.db.collection('aportes').onSnapshot(s=>{s.docs.forEach(d=>aportes[d.id]=d.data());renderApList(players,aportes,false);});
-  // load meta
-  window.db.doc('config/team').get().then(d=>{if(d.exists)teamMeta=d.data().meta||0;renderApList(players,aportes,false);});
+
+  let players=[],aportes={};
+  const u1=window.db.collection('players').onSnapshot(s=>{
+    players=s.docs.map(d=>({id:d.id,...d.data()}));
+    renderApList(players,aportes,false);
+  },e=>{console.error('players error:',e);});
+  const u2=window.db.collection('aportes').onSnapshot(s=>{
+    s.docs.forEach(d=>aportes[d.id]=d.data());
+    renderApList(players,aportes,false);
+  },e=>{console.error('aportes error:',e);});
+  window.db.doc('config/team').get().then(d=>{
+    if(d.exists){teamMeta=d.data().meta||0;renderApList(players,aportes,false);}
+  }).catch(e=>console.error('meta error:',e));
   _uns.push(u1,u2);
 }
 
 function renderPlayerEstadisticas(){
   const el=document.getElementById('main-content');
-  el.innerHTML=`<div class="stitle">⬡ Estadísticas del Equipo</div><div id="st-content"><div class="empty"><div class="spin"></div></div></div>`;
+  el.innerHTML=`
+    <div class="stitle">⬡ Estadísticas del Equipo</div>
+    <div id="st-content"><div class="empty"><div class="spin"></div></div></div>`;
   const u=window.db.collection('players').onSnapshot(s=>{
     const pl=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.stats?.goals||0)-(a.stats?.goals||0));
     const el2=document.getElementById('st-content');if(!el2)return;
@@ -869,6 +881,22 @@ function renderPlayerEstadisticas(){
 }
 
 // ── PHOTO UPLOAD ──────────────────────────────
+function openCamera(){
+  // Try to open camera directly
+  const input=document.getElementById('photo-input-camera');
+  if(input){
+    input.click();
+  } else {
+    // Fallback: create temporary input with camera
+    const tmp=document.createElement('input');
+    tmp.type='file';
+    tmp.accept='image/*';
+    tmp.capture='environment';
+    tmp.onchange=function(){handlePhotoUpload(tmp);};
+    tmp.click();
+  }
+}
+
 async function handlePhotoUpload(input){
   const file=input.files[0];if(!file)return;
   if(file.size>5*1024*1024){toast('Máximo 5MB',true);return;}
@@ -1478,45 +1506,80 @@ async function exportJugadoresExcel(){
   const pl=ps.docs.map(d=>({id:d.id,...d.data()}));
   const ap={};as.docs.forEach(d=>ap[d.id]=d.data());
   if(!pl.length){toast('Sin jugadores',true);return;}
-  const cuota=teamMeta&&pl.length?Math.ceil(teamMeta/pl.length):0;
+
+  toast('Generando Excel...');
+
   let maxPagos=0;
   pl.forEach(p=>{const pgs=(ap[p.cedula||p.id]||{pagos:[]}).pagos||[];if(pgs.length>maxPagos)maxPagos=pgs.length;});
 
-  // Header row
-  const header=['Foto','Identificación','Nombre Completo','# Camiseta','Nombre Camiseta','Total Aportado'];
-  if(cuota){header.push('Cuota','Falta','Estado');}
-  for(let i=1;i<=maxPagos;i++){header.push(`Pago ${i} - Fecha`,`Pago ${i} - Monto`,`Pago ${i} - Método`,`Pago ${i} - Nota`);}
-  
-  const rows=[header];
+  // Build HTML table - Excel opens .xls HTML files and renders images
+  let pagoHeaders='';
+  for(let i=1;i<=maxPagos;i++) pagoHeaders+=`<th>Abono ${i} Fecha</th><th>Abono ${i} Monto</th><th>Abono ${i} Método</th>`;
+
+  let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+  <head><meta charset="UTF-8">
+  <style>
+    td,th{border:1px solid #ccc;padding:4px;vertical-align:middle;font-family:Arial;font-size:11px;}
+    th{background:#8B0000;color:white;font-weight:bold;text-align:center;}
+    img{width:50px;height:50px;border-radius:50%;object-fit:cover;}
+    tr:nth-child(even){background:#fff0f0;}
+    .total-row{background:#8B0000;color:white;font-weight:bold;}
+  </style></head><body>
+  <table border="1" cellspacing="0">
+    <tr>
+      <th width="60">Foto</th>
+      <th width="130">Identificación</th>
+      <th width="200">Nombre Completo</th>
+      <th width="80"># Camiseta</th>
+      <th width="120">Nombre Camiseta</th>
+      <th width="120">Total Aportado</th>
+      ${pagoHeaders}
+    </tr>`;
+
   pl.forEach(p=>{
     const ced=p.cedula||p.id;
     const pgs=(ap[ced]||{pagos:[]}).pagos||[];
     const total=pgs.reduce((s,x)=>s+(+x.monto||0),0);
-    const falta=cuota?Math.max(0,cuota-total):0;
-    const estado=!cuota?'-':total>=cuota?'Pagó completo':total>0?'Pago parcial':'Sin pagar';
-    const row=[
-      p.fotoURL?'Ver foto en app':'-',
-      ced, p.nombre||'', p.numCamiseta||'', p.nombreCamiseta||'',
-      total
-    ];
-    if(cuota){row.push(cuota,falta,estado);}
+    const fotoCell=p.fotoURL
+      ?`<img src="${p.fotoURL}" width="50" height="50" style="border-radius:50%;object-fit:cover;">`
+      :`<div style="width:50px;height:50px;border-radius:50%;background:#8B0000;display:inline-flex;align-items:center;justify-content:center;color:white;font-weight:bold;">${(p.nombre||ced).split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</div>`;
+
+    let pagoCells='';
     for(let i=0;i<maxPagos;i++){
       const pg=pgs[i];
-      if(pg){row.push(pg.fecha||'',+pg.monto||0,pg.metodo||'',pg.nota||'');}
-      else{row.push('','','','');}
+      pagoCells+=pg
+        ?`<td>${pg.fecha||''}</td><td align="right">$${Number(pg.monto||0).toLocaleString('es-CO')}</td><td>${pg.metodo||''}</td>`
+        :`<td></td><td></td><td></td>`;
     }
-    rows.push(row);
+
+    html+=`<tr>
+      <td align="center">${fotoCell}</td>
+      <td>${ced}</td>
+      <td>${p.nombre||''}</td>
+      <td align="center">${p.numCamiseta||''}</td>
+      <td>${p.nombreCamiseta||''}</td>
+      <td align="right"><b>$${Number(total).toLocaleString('es-CO')}</b></td>
+      ${pagoCells}
+    </tr>`;
   });
 
-  // Total row
   const totalG=pl.reduce((s,p)=>{const ced=p.cedula||p.id;return s+(ap[ced]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;},0);
-  const totRow=['','','','','TOTAL RECAUDADO',totalG];
-  if(cuota){totRow.push(cuota*pl.length,Math.max(0,cuota*pl.length-totalG),'');}
-  rows.push(totRow);
+  html+=`<tr class="total-row">
+    <td colspan="5" align="right"><b>TOTAL RECAUDADO:</b></td>
+    <td align="right"><b>$${Number(totalG).toLocaleString('es-CO')}</b></td>
+    ${Array(maxPagos*3).fill('<td></td>').join('')}
+  </tr>`;
+  html+=`</table></body></html>`;
 
-  tblExcel(rows, teamName+'_jugadores_aportes.xlsx');
-  toast('Excel descargado ✓');
+  // Download as .xls
+  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=teamName+'_jugadores_aportes.xls';
+  a.click();
+  toast('✓ Excel descargado con fotos');
 }
+
 
 async function exportAportesExcel(){ exportJugadoresExcel(); }
 
