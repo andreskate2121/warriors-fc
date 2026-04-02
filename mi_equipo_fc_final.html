@@ -1028,20 +1028,53 @@ function renderPlayerPartidos(){
 }
 
 async function showMatchDetail(matchId){
-  const snap=await window.db.doc('matches/'+matchId).get();
-  if(!snap.exists)return;
-  const m=snap.data();
+  const [mSnap, plSnap]=await Promise.all([
+    window.db.doc('matches/'+matchId).get(),
+    window.db.collection('players').get()
+  ]);
+  if(!mSnap.exists)return;
+  const m=mSnap.data();
+  const players=plSnap.docs.map(d=>({id:d.id,...d.data()}));
   const res=m.result==='V'?{t:'VICTORIA',c:'#2ecc71'}:m.result==='E'?{t:'EMPATE',c:'var(--y)'}:{t:'DERROTA',c:'var(--r)'};
-  showModal(`${m.rival||'Rival'}`,`
+
+  // Build player stats rows from playerStats saved in match
+  const ps=m.playerStats||{};
+  const activePlayers=players.filter(p=>{
+    const id=p.cedula||p.id;
+    const s=ps[id];
+    return s&&(s.goals>0||s.assists>0||s.yellow||s.red);
+  });
+
+  const statsRows=activePlayers.length?activePlayers.map(p=>{
+    const id=p.cedula||p.id;
+    const s=ps[id];
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--d2);border-radius:8px;margin-bottom:6px;">
+      <div style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;background:${clr(id)};display:flex;align-items:center;justify-content:center;font-weight:bold;color:#fff;font-size:12px;">
+        ${p.fotoURL?`<img src="${p.fotoURL}" style="width:100%;height:100%;object-fit:cover;">`:''}
+        ${!p.fotoURL?ini(p.nombre||id):''}
+      </div>
+      <div style="flex:1;font-size:13px;font-weight:500;">${p.nombre||id}</div>
+      <div style="display:flex;gap:6px;font-size:13px;">
+        ${s.goals>0?`<span style="background:rgba(46,204,113,.2);color:#2ecc71;padding:2px 6px;border-radius:6px;">⚽ ${s.goals}</span>`:''}
+        ${s.assists>0?`<span style="background:rgba(52,152,219,.2);color:#3498db;padding:2px 6px;border-radius:6px;">🎯 ${s.assists}</span>`:''}
+        ${s.yellow?`<span style="font-size:14px;">🟡</span>`:''}
+        ${s.red?`<span style="font-size:14px;">🔴</span>`:''}
+      </div>
+    </div>`;
+  }).join(''):'<div style="color:var(--mt);font-size:12px;text-align:center;padding:8px;">Sin estadísticas individuales registradas</div>';
+
+  showModal(`Warriors FC vs ${m.rival||'Rival'}`,`
     <div style="text-align:center;margin-bottom:16px;">
-      <div style="font-size:13px;color:var(--mt);margin-bottom:8px;">Warriors FC vs ${m.rival||'Rival'}</div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--gold);letter-spacing:4px;">${m.gf||0} - ${m.ga||0}</div>
-      <span style="background:${res.c}22;color:${res.c};font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid ${res.c}44;">${res.t}</span>
+      <div style="font-size:12px;color:var(--mt);margin-bottom:6px;">${m.date||''} · ${m.type||''} · ${m.home||''}${m.venue?' · '+m.venue:''}</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:52px;color:var(--gold);letter-spacing:6px;line-height:1;">${m.gf||0} - ${m.ga||0}</div>
+      <div style="font-size:11px;color:var(--mt);margin-bottom:8px;">Warriors FC &nbsp;·&nbsp; ${m.rival||'Rival'}</div>
+      <span style="background:${res.c}22;color:${res.c};font-size:12px;font-weight:700;padding:4px 14px;border-radius:20px;border:1px solid ${res.c}44;">${res.t}</span>
     </div>
-    <div style="font-size:12px;color:var(--mt);margin-bottom:12px;">${m.date||''} · ${m.type||''} · ${m.home||''}${m.venue?' · '+m.venue:''}</div>
-    ${m.goleadores?`<div style="margin-bottom:8px;padding:10px;background:var(--d2);border-radius:8px;"><span style="color:var(--g);font-weight:600;">⚽ Goleadores</span><div style="margin-top:4px;font-size:13px;">${m.goleadores}</div></div>`:''}
-    ${m.asistencias?`<div style="margin-bottom:8px;padding:10px;background:var(--d2);border-radius:8px;"><span style="color:var(--b);font-weight:600;">🎯 Asistencias</span><div style="margin-top:4px;font-size:13px;">${m.asistencias}</div></div>`:''}
-    ${m.notes?`<div style="padding:10px;background:var(--d2);border-radius:8px;"><span style="color:var(--mt);font-weight:600;">📝 Notas</span><div style="margin-top:4px;font-size:13px;">${m.notes}</div></div>`:''}
+
+    <div style="font-size:11px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px;">Estadísticas del partido</div>
+    ${statsRows}
+
+    ${m.notes?`<div style="margin-top:10px;padding:10px;background:var(--d2);border-radius:8px;"><span style="color:var(--mt);font-size:11px;font-weight:600;text-transform:uppercase;">📝 Notas</span><div style="margin-top:4px;font-size:13px;">${m.notes}</div></div>`:''}
   `);
 }
 
