@@ -902,11 +902,14 @@ async function handlePhotoUpload(input){
 
 // ── TOPBAR ────────────────────────────────────
 function updateTopbar(name,foto,isAdm){
-  document.getElementById('tb-name').textContent=name;
-  document.getElementById('tb-ini').textContent=ini(name);
+  const tbName=document.getElementById('tb-name');
+  const tbIni=document.getElementById('tb-ini');
   const av=document.getElementById('tb-av');
-  if(foto) av.innerHTML=`<img src="${foto}" onerror="this.style.display='none'">`;
-  document.getElementById('tb-admin').style.display=isAdm?'':'none';
+  const tbAdmin=document.getElementById('tb-admin');
+  if(tbName) tbName.textContent=name||'';
+  if(tbIni) tbIni.textContent=ini(name||'?');
+  if(av&&foto) av.innerHTML=`<img src="${foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'">`;
+  if(tbAdmin) tbAdmin.style.display=isAdm?'':'none';
 }
 
 // ══════════════════════════════════════════════
