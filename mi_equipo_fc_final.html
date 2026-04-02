@@ -1514,7 +1514,7 @@ async function buildReportHTML(pl, ap){
   pl.forEach(p=>{const pgs=(ap[p.cedula||p.id]||{pagos:[]}).pagos||[];if(pgs.length>maxPagos)maxPagos=pgs.length;});
 
   let pagoHeaders='';
-  for(let i=1;i<=maxPagos;i++) pagoHeaders+=`<th>Abono ${i}<br>Fecha</th><th>Abono ${i}<br>Monto</th><th>Método</th>`;
+  for(let i=1;i<=maxPagos;i++) pagoHeaders+=`<th>Abono ${i} - Fecha</th><th>Abono ${i} - Monto</th>`;
 
   const totalG=pl.reduce((s,p)=>{const ced=p.cedula||p.id;return s+(ap[ced]||{pagos:[]}).pagos?.reduce((a,x)=>a+(+x.monto||0),0)||0;},0);
   const pct=teamMeta?Math.min(100,Math.round(totalG/teamMeta*100)):0;
@@ -1525,19 +1525,18 @@ async function buildReportHTML(pl, ap){
     const pgs=(ap[ced]||{pagos:[]}).pagos||[];
     const total=pgs.reduce((s,x)=>s+(+x.monto||0),0);
     const fotoCell=p.fotoURL
-      ?`<img src="${p.fotoURL}" style="width:55px;height:55px;border-radius:50%;object-fit:cover;border:2px solid #8B0000;">`
-      :`<div style="width:55px;height:55px;border-radius:50%;background:#8B0000;display:inline-flex;align-items:center;justify-content:center;color:#f39c12;font-weight:bold;font-size:18px;">${(p.nombre||ced).split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</div>`;
+      ?`<img src="${p.fotoURL}" style="width:75px;height:75px;border-radius:8px;object-fit:cover;border:2px solid #8B0000;">`
+      :`<div style="width:75px;height:75px;border-radius:8px;background:#8B0000;display:inline-flex;align-items:center;justify-content:center;color:#f39c12;font-weight:bold;font-size:22px;">${(p.nombre||ced).split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</div>`;
     let pagoCells='';
     for(let i=0;i<maxPagos;i++){
       const pg=pgs[i];
-      pagoCells+=pg?`<td>${pg.fecha||''}</td><td style="text-align:right;color:#27ae60;font-weight:bold;">$${Number(pg.monto||0).toLocaleString('es-CO')}</td><td>${pg.metodo||''}</td>`:`<td></td><td></td><td></td>`;
+      pagoCells+=pg?`<td>${pg.fecha||''}</td><td style="text-align:right;color:#27ae60;font-weight:bold;">$${Number(pg.monto||0).toLocaleString('es-CO')}</td>`:`<td></td><td></td>`;
     }
     rows+=`<tr>
       <td style="text-align:center;padding:4px;">${fotoCell}</td>
       <td>${ced}</td><td><b>${p.nombre||''}</b></td>
       <td style="text-align:center;">${p.numCamiseta||''}</td>
       <td>${p.nombreCamiseta||''}</td>
-      <td style="text-align:right;font-weight:bold;color:#27ae60;">$${Number(total).toLocaleString('es-CO')}</td>
       ${pagoCells}
     </tr>`;
   });
@@ -1575,9 +1574,9 @@ async function buildReportHTML(pl, ap){
     <div class="meta-item"><div class="meta-val">${pl.length}</div><div class="meta-lbl">Jugadores</div></div>
   </div>
   <table>
-    <thead><tr><th width="65">Foto</th><th>Identificación</th><th>Nombre</th><th>#</th><th>Camiseta</th><th>Total</th>${pagoHeaders}</tr></thead>
+    <thead><tr><th width="80">Foto</th><th>Identificación</th><th>Nombre</th><th>#</th><th>Camiseta</th>${pagoHeaders}</tr></thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr class="total-row"><td colspan="5" style="text-align:right;">TOTAL RECAUDADO:</td><td>$${Number(totalG).toLocaleString('es-CO')}</td>${Array(maxPagos*3).fill('<td></td>').join('')}</tr></tfoot>
+    <tfoot><tr class="total-row"><td colspan="4" style="text-align:right;">TOTAL RECAUDADO:</td><td colspan="2" style="color:#27ae60;font-weight:bold;">$${Number(totalG).toLocaleString('es-CO')}</td>${Array(maxPagos*2).fill('<td></td>').join('')}</tr></tfoot>
   </table>
   </body></html>`;
 }
