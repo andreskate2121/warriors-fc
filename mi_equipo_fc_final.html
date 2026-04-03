@@ -389,6 +389,8 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 .chat-send-btn{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#c0392b,#922b21);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:all .15s;box-shadow:0 2px 8px rgba(192,57,43,0.4);}
 .chat-send-btn:hover{transform:scale(1.08);}
 .chat-send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.chat-attach-btn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:var(--tx);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;transition:all .15s;}
+.chat-attach-btn:hover{background:rgba(255,255,255,0.14);transform:scale(1.08);}
 .chat-day-sep{text-align:center;font-size:10px;color:var(--mt);margin:4px 0;letter-spacing:.5px;}
 .chat-empty{text-align:center;color:var(--mt);padding:40px 20px;}
 .chat-empty-ico{font-size:36px;margin-bottom:10px;}
@@ -1216,9 +1218,8 @@ let chatListener = null;
 function renderChat(){
   const el = document.getElementById('main-content');
   const isAdm = role === 'admin';
-  const senderName = isAdm ? '👑 Administrador' : (pData?.nombre || ced || 'Jugador');
-  const senderId   = isAdm ? 'admin' : (ced || CU?.uid || 'anon');
-  hideFab(); // Ocultar FAB mientras el chat está abierto
+  const senderId = isAdm ? 'admin' : (ced || CU?.uid || 'anon');
+  hideFab();
   clearFabUnread();
 
   el.innerHTML = `
@@ -1229,25 +1230,30 @@ function renderChat(){
         <h3>CHAT WARRIORS FC</h3>
         <div class="chat-online-dot"></div>
         <span class="chat-members-count" id="chat-members">En vivo</span>
+        ${isAdm ? `<button onclick="clearAllChat()" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.3);color:var(--r);border-radius:7px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🗑️ Vaciar</button>` : ''}
       </div>
       <div class="chat-msgs" id="chat-msgs">
         <div class="chat-empty"><div class="chat-empty-ico">💬</div><div>Cargando mensajes...</div></div>
       </div>
       <div class="chat-input-row">
+        <button class="chat-attach-btn" onclick="document.getElementById('chat-file-input').click()" title="Adjuntar">📎</button>
+        <input type="file" id="chat-file-input" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onchange="sendChatFile(this)">
         <textarea class="chat-input" id="chat-input" placeholder="Escribe un mensaje..." rows="1"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg();}"
           oninput="autoResizeChatInput(this)"></textarea>
         <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMsg()" title="Enviar">➤</button>
       </div>
+      <div id="chat-upload-progress" style="display:none;padding:6px 14px;font-size:12px;color:var(--gold);background:rgba(243,156,18,0.08);border-top:1px solid rgba(243,156,18,0.2);">
+        ⏳ Subiendo archivo...
+      </div>
     </div>`;
 
-  // Unsuscribir listener previo si existe
   if(chatListener){ try{chatListener();}catch(e){} chatListener=null; }
   clearFabUnread();
 
   chatListener = window.db.collection('chat')
     .orderBy('ts','asc')
-    .limitToLast(80)
+    .limitToLast(100)
     .onSnapshot(snap => {
       const msgsEl = document.getElementById('chat-msgs');
       if(!msgsEl) return;
@@ -1264,29 +1270,55 @@ function renderChat(){
         const dayStr  = m.ts ? new Date(m.ts.toDate()).toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'}) : '';
         let sep = '';
         if(dayStr !== lastDay){ sep = `<div class="chat-day-sep">— ${dayStr} —</div>`; lastDay = dayStr; }
+        const bubble = buildChatBubble(m);
         return `${sep}<div class="chat-msg ${isMe?'me':'other'}${isAdmin?' admin-msg':''}">
           ${!isMe?`<div class="chat-sender">${isAdmin?`<span class="chat-admin-badge">⚽ Admin</span>`:''} ${m.senderName||'Jugador'}</div>`:''}
-          <div class="chat-bubble">${escapeHtml(m.text||'')}</div>
+          <div class="chat-bubble">${bubble}</div>
           <div class="chat-time">${time}</div>
         </div>`;
       }).join('');
-      // Auto scroll al fondo
       msgsEl.scrollTop = msgsEl.scrollHeight;
-      // Contar mensajes del día
       const today = new Date().toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'});
       const todayCount = msgs.filter(m => {
         if(!m.ts) return false;
-        const d = new Date(m.ts.toDate()).toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'});
-        return d === today;
+        return new Date(m.ts.toDate()).toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'}) === today;
       }).length;
       const cntEl = document.getElementById('chat-members');
       if(cntEl) cntEl.textContent = `${todayCount} hoy · ${msgs.length} total`;
     }, err => {
       const msgsEl = document.getElementById('chat-msgs');
-      if(msgsEl) msgsEl.innerHTML = `<div class="chat-empty"><div class="chat-empty-ico">⚠️</div><div>Error al cargar mensajes<br><span style="font-size:11px;color:var(--r)">${err.message}</span></div></div>`;
+      if(msgsEl) msgsEl.innerHTML = `<div class="chat-empty"><div class="chat-empty-ico">⚠️</div><div>Error: ${err.message}</div></div>`;
     });
 
   _uns.push(chatListener);
+}
+
+function buildChatBubble(m){
+  if(m.mediaType === 'image'){
+    return `<img src="${m.mediaUrl}" style="max-width:220px;max-height:220px;border-radius:10px;display:block;cursor:pointer;object-fit:cover;" onclick="window.open('${m.mediaUrl}','_blank')" onerror="this.outerHTML='🖼️ Imagen no disponible'">
+            ${m.text?`<div style="margin-top:5px;font-size:13px;">${escapeHtml(m.text)}</div>`:''}`;
+  }
+  if(m.mediaType === 'audio'){
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+      <span style="font-size:18px;">🎵</span>
+      <audio controls style="max-width:180px;height:32px;"><source src="${m.mediaUrl}"></audio>
+    </div>
+    ${m.text?`<div style="margin-top:4px;font-size:12px;color:rgba(255,255,255,0.7)">${escapeHtml(m.text)}</div>`:''}`;
+  }
+  if(m.mediaType === 'video'){
+    return `<video controls style="max-width:220px;border-radius:10px;display:block;">
+      <source src="${m.mediaUrl}">
+    </video>
+    ${m.text?`<div style="margin-top:5px;font-size:13px;">${escapeHtml(m.text)}</div>`:''}`;
+  }
+  if(m.mediaType === 'file'){
+    return `<a href="${m.mediaUrl}" target="_blank" style="display:flex;align-items:center;gap:8px;color:inherit;text-decoration:none;padding:6px 10px;background:rgba(255,255,255,0.07);border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+      <span style="font-size:22px;">📄</span>
+      <div><div style="font-size:12px;font-weight:600;">${m.fileName||'Archivo'}</div><div style="font-size:10px;opacity:0.6;">Toca para abrir</div></div>
+    </a>
+    ${m.text?`<div style="margin-top:5px;font-size:13px;">${escapeHtml(m.text)}</div>`:''}`;
+  }
+  return escapeHtml(m.text||'');
 }
 
 async function sendChatMsg(){
@@ -1307,23 +1339,97 @@ async function sendChatMsg(){
       isAdmin: isAdm,
       ts: firebase.firestore.FieldValue.serverTimestamp()
     });
-    // Notificación del navegador (gratis, sin servidor)
     try{
       if(window.Notification && Notification.permission === 'granted'){
         new Notification('⚽ Warriors FC', {
           body: senderName + ': ' + text,
           icon: 'https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg',
-          badge: 'https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg',
           tag: 'warriors-chat'
         });
       }
-    }catch(ne){ console.log('Notif:',ne); }
+    }catch(ne){}
   } catch(e){
     toast('Error al enviar: '+e.message, true);
-    input.value = text; // Restaurar texto si falla
+    input.value = text;
   } finally {
     btn.disabled = false;
     input.focus();
+  }
+}
+
+async function sendChatFile(input){
+  const file = input.files[0];
+  if(!file) return;
+  input.value = '';
+  const maxMB = file.type.startsWith('video') ? 100 : 20;
+  if(file.size > maxMB*1024*1024){ toast(`Máximo ${maxMB}MB`, true); return; }
+
+  const isAdm      = role === 'admin';
+  const senderName = isAdm ? '👑 Administrador' : (pData?.nombre || ced || 'Jugador');
+  const senderId   = isAdm ? 'admin' : (ced || CU?.uid || 'anon');
+
+  const prog = document.getElementById('chat-upload-progress');
+  if(prog) prog.style.display = '';
+  toast('Subiendo archivo...');
+
+  try{
+    // Determinar tipo
+    let mediaType = 'file';
+    let resourceType = 'raw';
+    if(file.type.startsWith('image/')){ mediaType='image'; resourceType='image'; }
+    else if(file.type.startsWith('audio/')){ mediaType='audio'; resourceType='video'; }
+    else if(file.type.startsWith('video/')){ mediaType='video'; resourceType='video'; }
+
+    // Subir a Cloudinary
+    const reader = new FileReader();
+    const base64 = await new Promise((res,rej)=>{ reader.onload=e=>res(e.target.result); reader.onerror=rej; reader.readAsDataURL(file); });
+    const fd = new FormData();
+    fd.append('file', base64);
+    fd.append('upload_preset', CLOUDINARY_PRESET);
+    fd.append('resource_type', resourceType);
+
+    const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`, {method:'POST', body:fd});
+    const data = await resp.json();
+    if(data.error){ toast('❌ '+data.error.message, true); return; }
+
+    // Guardar en Firestore
+    await window.db.collection('chat').add({
+      text: '',
+      mediaUrl: data.secure_url,
+      mediaType,
+      fileName: file.name,
+      senderName, senderId,
+      isAdmin: isAdm,
+      ts: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('✓ Archivo enviado');
+  } catch(e){
+    toast('❌ Error: '+e.message, true);
+  } finally {
+    if(prog) prog.style.display = 'none';
+  }
+}
+
+async function clearAllChat(){
+  showModal('🗑️ Vaciar Chat', `
+    <p style="font-size:14px;color:var(--mt);margin-bottom:18px;line-height:1.6;">¿Estás seguro? Se borrarán <b style="color:var(--r)">todos</b> los mensajes. Esta acción no se puede deshacer.</p>
+    <div class="factions">
+      <button class="btn bo" onclick="closeModal()">Cancelar</button>
+      <button class="btn bg" onclick="confirmClearChat()">🗑️ Sí, vaciar todo</button>
+    </div>`);
+}
+
+async function confirmClearChat(){
+  closeModal();
+  toast('Vaciando chat...');
+  try{
+    const snap = await window.db.collection('chat').get();
+    const batch = window.db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    toast('✓ Chat vaciado');
+  }catch(e){
+    toast('❌ Error: '+e.message, true);
   }
 }
 
