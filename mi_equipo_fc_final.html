@@ -937,7 +937,7 @@ function setupPlayer(){
   renderPlayerTabs('perfil');
   showFab();
   startFabUnreadTracker();
-  // Live listener on own data
+  requestNotifPermission();
   const u=window.db.doc('players/'+ced).onSnapshot(d=>{
     if(!d.exists)return;
     pData=d.data();
@@ -951,6 +951,7 @@ function setupPlayer(){
 function renderPlayerTabs(t){
   const tabs=[['perfil','👤 Perfil'],['aportes','💰 Aportes'],['partidos','🏆 Partidos'],['estadisticas','📊 Stats'],['chat','💬 Chat']];
   document.getElementById('main-tabs').innerHTML=tabs.map(([k,v])=>`<button class="tab${k===t?' active':''}" onclick="renderPlayerTabs('${k}')">${v}</button>`).join('');
+  if(t!=='chat') showFab(); else hideFab();
   if(t==='perfil') renderPlayerPerfil();
   if(t==='aportes') renderPlayerAportes();
   if(t==='partidos') renderPlayerPartidos();
@@ -1217,6 +1218,8 @@ function renderChat(){
   const isAdm = role === 'admin';
   const senderName = isAdm ? '👑 Administrador' : (pData?.nombre || ced || 'Jugador');
   const senderId   = isAdm ? 'admin' : (ced || CU?.uid || 'anon');
+  hideFab(); // Ocultar FAB mientras el chat está abierto
+  clearFabUnread();
 
   el.innerHTML = `
     <div class="stitle">⬡ Chat del Equipo</div>
@@ -1304,6 +1307,17 @@ async function sendChatMsg(){
       isAdmin: isAdm,
       ts: firebase.firestore.FieldValue.serverTimestamp()
     });
+    // Notificación del navegador (gratis, sin servidor)
+    try{
+      if(window.Notification && Notification.permission === 'granted'){
+        new Notification('⚽ Warriors FC', {
+          body: senderName + ': ' + text,
+          icon: 'https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg',
+          badge: 'https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg',
+          tag: 'warriors-chat'
+        });
+      }
+    }catch(ne){ console.log('Notif:',ne); }
   } catch(e){
     toast('Error al enviar: '+e.message, true);
     input.value = text; // Restaurar texto si falla
@@ -1334,31 +1348,57 @@ function hideFab(){
 function openFloatingChat(){
   if(role==='admin') renderAdminTabs('chat');
   else renderPlayerTabs('chat');
-  // Scroll tabs into view
   const chatTab=document.querySelector('.tab.active');
   if(chatTab) chatTab.scrollIntoView({behavior:'smooth',inline:'center'});
 }
+
+// Pedir permiso de notificaciones
+function requestNotifPermission(){
+  if(window.Notification && Notification.permission === 'default'){
+    Notification.requestPermission();
+  }
+}
+
 // Track unread messages
 let lastSeenChatTs = 0;
+let lastKnownMsgId = null;
 function startFabUnreadTracker(){
   if(!window.db) return;
+  // Marcar timestamp actual para no notificar mensajes viejos
+  lastSeenChatTs = Date.now();
   window.db.collection('chat').orderBy('ts','desc').limit(1)
     .onSnapshot(snap=>{
       if(!snap.docs.length) return;
-      const msg=snap.docs[0].data();
+      const doc = snap.docs[0];
+      const msg = doc.data();
       if(!msg.ts) return;
-      const ts=msg.ts.toMillis ? msg.ts.toMillis() : 0;
-      // Only count if not from me
+      const ts = msg.ts.toMillis ? msg.ts.toMillis() : 0;
       const myId = role==='admin' ? 'admin' : (ced||CU?.uid);
-      const activeTab=document.querySelector('.tab.active')?.textContent||'';
-      if(ts > lastSeenChatTs && msg.senderId !== myId && !activeTab.includes('Chat')){
-        const badge=document.getElementById('fab-unread');
-        if(badge){
-          const cur=parseInt(badge.textContent)||0;
-          badge.textContent=cur+1;
-          badge.style.display='flex';
+      const activeTab = document.querySelector('.tab.active')?.textContent||'';
+      const isNewMsg = doc.id !== lastKnownMsgId && ts > lastSeenChatTs;
+      if(isNewMsg && msg.senderId !== myId){
+        // Badge en FAB
+        if(!activeTab.includes('Chat')){
+          const badge=document.getElementById('fab-unread');
+          if(badge){
+            const cur=parseInt(badge.textContent)||0;
+            badge.textContent=cur+1;
+            badge.style.display='flex';
+          }
+        }
+        // Notificación del navegador
+        if(window.Notification && Notification.permission==='granted' && !activeTab.includes('Chat')){
+          try{
+            new Notification('💬 Warriors FC — Chat', {
+              body: (msg.senderName||'Jugador') + ': ' + (msg.text||''),
+              icon: 'https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg',
+              tag: 'warriors-chat',
+              renotify: true
+            });
+          }catch(e){}
         }
       }
+      lastKnownMsgId = doc.id;
     });
 }
 function clearFabUnread(){
@@ -1438,6 +1478,7 @@ function setupAdmin(){
     renderAdminTabs('jugadores');
     showFab();
     startFabUnreadTracker();
+    requestNotifPermission();
     window.db.doc('config/team').onSnapshot(d=>{
       if(d.exists){teamMeta=d.data().meta||0;teamName=d.data().name||'Warriors FC';}
     });
@@ -1452,6 +1493,7 @@ function renderAdminTabs(t){
   const tabs=[['jugadores','⚽ Jugadores'],['aportes','💰 Aportes'],['partidos','🏆 Partidos'],['estadisticas','📊 Stats'],['equipo','⚙️ Equipo'],['chat','💬 Chat']];
   document.getElementById('main-tabs').innerHTML=tabs.map(([k,v])=>`<button class="tab${k===t?' active':''}" onclick="renderAdminTabs('${k}')">${v}</button>`).join('');
   _uns.forEach(u=>{try{u();}catch(e){}});_uns=[];
+  if(t!=='chat') showFab(); else hideFab();
   if(t==='jugadores') adminJugadores();
   if(t==='aportes') adminAportes();
   if(t==='partidos') adminPartidos();
