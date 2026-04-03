@@ -398,6 +398,49 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 .chat-members-count{font-size:11px;color:var(--mt);}
 .chat-notif-badge{position:absolute;top:-4px;right:-4px;background:var(--r);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
 .tab-chat-wrap{position:relative;display:inline-block;}
+
+/* ── FLOATING CHAT BUTTON ── */
+#fab-chat{
+  position:fixed;
+  bottom:24px;
+  right:20px;
+  width:56px;height:56px;
+  border-radius:50%;
+  background:rgba(41,128,185,0.18);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:1.5px solid rgba(255,255,255,0.18);
+  box-shadow:0 4px 24px rgba(41,128,185,0.25), 0 1.5px 6px rgba(0,0,0,0.18);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:150;
+  transition:all .22s cubic-bezier(.34,1.56,.64,1);
+  outline:none;
+  padding:0;
+}
+#fab-chat:hover{
+  background:rgba(41,128,185,0.32);
+  transform:scale(1.1);
+  box-shadow:0 6px 28px rgba(41,128,185,0.4);
+}
+#fab-chat:active{transform:scale(0.94);}
+.fab-unread{
+  position:absolute;
+  top:-3px;right:-3px;
+  background:linear-gradient(135deg,#e74c3c,#c0392b);
+  color:#fff;
+  font-size:9px;font-weight:700;
+  min-width:17px;height:17px;
+  border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 4px;
+  border:1.5px solid rgba(10,10,10,0.7);
+  font-family:'DM Sans',sans-serif;
+  letter-spacing:0;
+  box-shadow:0 2px 6px rgba(231,76,60,0.5);
+}
 </style>
   <!-- PWA iOS -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -518,6 +561,17 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
 <div class="toast" id="toast"></div>
 <input type="file" id="photo-input-camera" accept="image/*" capture="environment" onchange="handlePhotoUpload(this)" style="display:none"><input type="file" id="photo-input-gallery" accept="image/*" onchange="handlePhotoUpload(this)" style="display:none">
 <div id="modal-wrap"></div>
+
+<!-- FLOATING CHAT BUTTON -->
+<button id="fab-chat" onclick="openFloatingChat()" style="display:none">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="white"/>
+    <circle cx="8" cy="10" r="1.2" fill="#3b82f6"/>
+    <circle cx="12" cy="10" r="1.2" fill="#3b82f6"/>
+    <circle cx="16" cy="10" r="1.2" fill="#3b82f6"/>
+  </svg>
+  <span id="fab-unread" class="fab-unread" style="display:none">0</span>
+</button>
 
 <!-- FIREBASE -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -828,6 +882,7 @@ function clearErr(){document.getElementById('l-err').style.display='none';}
 
 function doLogout(){
   _uns.forEach(u=>{try{u();}catch(e){}});_uns=[];
+  hideFab();
   window.auth.signOut();
   hide('app');hide('scr-first');hide('scr-blocked');
   document.getElementById('scr-login').style.display='flex';
@@ -880,6 +935,8 @@ function setupPlayer(){
   document.getElementById('app').style.display='flex';
   updateTopbar(pData?.nombre||'Jugador', pData?.fotoURL||null, false);
   renderPlayerTabs('perfil');
+  showFab();
+  startFabUnreadTracker();
   // Live listener on own data
   const u=window.db.doc('players/'+ced).onSnapshot(d=>{
     if(!d.exists)return;
@@ -1183,6 +1240,7 @@ function renderChat(){
 
   // Unsuscribir listener previo si existe
   if(chatListener){ try{chatListener();}catch(e){} chatListener=null; }
+  clearFabUnread();
 
   chatListener = window.db.collection('chat')
     .orderBy('ts','asc')
@@ -1264,6 +1322,51 @@ function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
 }
 
+// ── FLOATING CHAT BUTTON ──────────────────────
+function showFab(){
+  const fab=document.getElementById('fab-chat');
+  if(fab) fab.style.display='flex';
+}
+function hideFab(){
+  const fab=document.getElementById('fab-chat');
+  if(fab) fab.style.display='none';
+}
+function openFloatingChat(){
+  if(role==='admin') renderAdminTabs('chat');
+  else renderPlayerTabs('chat');
+  // Scroll tabs into view
+  const chatTab=document.querySelector('.tab.active');
+  if(chatTab) chatTab.scrollIntoView({behavior:'smooth',inline:'center'});
+}
+// Track unread messages
+let lastSeenChatTs = 0;
+function startFabUnreadTracker(){
+  if(!window.db) return;
+  window.db.collection('chat').orderBy('ts','desc').limit(1)
+    .onSnapshot(snap=>{
+      if(!snap.docs.length) return;
+      const msg=snap.docs[0].data();
+      if(!msg.ts) return;
+      const ts=msg.ts.toMillis ? msg.ts.toMillis() : 0;
+      // Only count if not from me
+      const myId = role==='admin' ? 'admin' : (ced||CU?.uid);
+      const activeTab=document.querySelector('.tab.active')?.textContent||'';
+      if(ts > lastSeenChatTs && msg.senderId !== myId && !activeTab.includes('Chat')){
+        const badge=document.getElementById('fab-unread');
+        if(badge){
+          const cur=parseInt(badge.textContent)||0;
+          badge.textContent=cur+1;
+          badge.style.display='flex';
+        }
+      }
+    });
+}
+function clearFabUnread(){
+  const badge=document.getElementById('fab-unread');
+  if(badge){badge.textContent='0';badge.style.display='none';}
+  lastSeenChatTs=Date.now();
+}
+
 // ── PHOTO UPLOAD ──────────────────────────────
 function openCamera(){
   // Try to open camera directly
@@ -1333,6 +1436,8 @@ function setupAdmin(){
     document.getElementById('app').style.display='flex';
     updateTopbar('Administrador',null,true);
     renderAdminTabs('jugadores');
+    showFab();
+    startFabUnreadTracker();
     window.db.doc('config/team').onSnapshot(d=>{
       if(d.exists){teamMeta=d.data().meta||0;teamName=d.data().name||'Warriors FC';}
     });
