@@ -450,6 +450,7 @@ body{background:var(--d0);color:var(--tx);font-family:'DM Sans',sans-serif;font-
   <meta name="apple-mobile-web-app-title" content="Warriors FC">
   <link rel="apple-touch-icon" href="https://res.cloudinary.com/dwef0bowz/image/upload/w_180,h_180,c_fill/wsjs716llevmiqtdcrvb.jpg">
   <meta name="theme-color" content="#c0392b">
+  <link rel="manifest" href="./manifest.json">
 
   <!-- OneSignal Push Notifications -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
@@ -740,28 +741,6 @@ function startApp(){
     }
   });
 }
-
-// PWA manifest
-(()=>{
-  const m={
-    name:'Warriors FC',
-    short_name:'Warriors FC',
-    description:'App de gestión del equipo Warriors FC',
-    start_url:'./mi_equipo_fc_final.html',
-    display:'standalone',
-    orientation:'portrait',
-    background_color:'#0a0a0a',
-    theme_color:'#c0392b',
-    icons:[
-      {src:'https://res.cloudinary.com/dwef0bowz/image/upload/w_192,h_192,c_fill/wsjs716llevmiqtdcrvb.jpg',sizes:'192x192',type:'image/jpeg'},
-      {src:'https://res.cloudinary.com/dwef0bowz/image/upload/w_512,h_512,c_fill/wsjs716llevmiqtdcrvb.jpg',sizes:'512x512',type:'image/jpeg'}
-    ]
-  };
-  const l=document.createElement('link');
-  l.rel='manifest';
-  l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/json'}));
-  document.head.appendChild(l);
-})();
 
 // ── STATE ──────────────────────────────────────
 let CU=null, role=null, ced=null, pData=null, adminUID=null;
@@ -1321,6 +1300,25 @@ function buildChatBubble(m){
   return escapeHtml(m.text||'');
 }
 
+// Canal único de Warriors FC en ntfy.sh
+const NTFY_TOPIC = 'warriors-fc-oviedo-2026';
+
+async function ntfyNotify(title, body){
+  try{
+    await fetch('https://ntfy.sh/' + NTFY_TOPIC, {
+      method: 'POST',
+      headers: {
+        'Title': title,
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Icon': 'https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg',
+        'Priority': 'default',
+        'Tags': 'soccer'
+      },
+      body: body
+    });
+  }catch(e){ console.log('ntfy error:',e); }
+}
+
 async function sendChatMsg(){
   const input  = document.getElementById('chat-input');
   const btn    = document.getElementById('chat-send-btn');
@@ -1339,6 +1337,7 @@ async function sendChatMsg(){
       isAdmin: isAdm,
       ts: firebase.firestore.FieldValue.serverTimestamp()
     });
+    // Notificación navegador (app abierta)
     try{
       if(window.Notification && Notification.permission === 'granted'){
         new Notification('⚽ Warriors FC', {
@@ -1348,6 +1347,8 @@ async function sendChatMsg(){
         });
       }
     }catch(ne){}
+    // Notificación push via ntfy.sh (app cerrada)
+    ntfyNotify('💬 ' + senderName, text);
   } catch(e){
     toast('Error al enviar: '+e.message, true);
     input.value = text;
@@ -1403,6 +1404,9 @@ async function sendChatFile(input){
       ts: firebase.firestore.FieldValue.serverTimestamp()
     });
     toast('✓ Archivo enviado');
+    // Notificación push
+    const tipoEmoji = mediaType==='image'?'🖼️':mediaType==='audio'?'🎵':mediaType==='video'?'🎥':'📄';
+    ntfyNotify('💬 ' + senderName, tipoEmoji + ' Envió un archivo');
   } catch(e){
     toast('❌ Error: '+e.message, true);
   } finally {
