@@ -1472,44 +1472,65 @@ function requestNotifPermission(){
 // Track unread messages
 let lastSeenChatTs = 0;
 let lastKnownMsgId = null;
+let fabTrackerStarted = false;
+
 function startFabUnreadTracker(){
-  if(!window.db) return;
-  // Marcar timestamp actual para no notificar mensajes viejos
-  lastSeenChatTs = Date.now();
-  window.db.collection('chat').orderBy('ts','desc').limit(1)
-    .onSnapshot(snap=>{
-      if(!snap.docs.length) return;
-      const doc = snap.docs[0];
-      const msg = doc.data();
-      if(!msg.ts) return;
-      const ts = msg.ts.toMillis ? msg.ts.toMillis() : 0;
-      const myId = role==='admin' ? 'admin' : (ced||CU?.uid);
-      const activeTab = document.querySelector('.tab.active')?.textContent||'';
-      const isNewMsg = doc.id !== lastKnownMsgId && ts > lastSeenChatTs;
-      if(isNewMsg && msg.senderId !== myId){
-        // Badge en FAB
-        if(!activeTab.includes('Chat')){
-          const badge=document.getElementById('fab-unread');
-          if(badge){
-            const cur=parseInt(badge.textContent)||0;
-            badge.textContent=cur+1;
-            badge.style.display='flex';
+  if(!window.db || fabTrackerStarted) return;
+  fabTrackerStarted = true;
+
+  // Primero obtener el ID del último mensaje actual para no notificar mensajes viejos
+  window.db.collection('chat').orderBy('ts','desc').limit(1).get().then(snap=>{
+    if(snap.docs.length) lastKnownMsgId = snap.docs[0].id;
+    lastSeenChatTs = Date.now();
+
+    // Ahora sí escuchar nuevos mensajes
+    window.db.collection('chat').orderBy('ts','desc').limit(1)
+      .onSnapshot(snap=>{
+        if(!snap.docs.length) return;
+        const doc = snap.docs[0];
+        const msg = doc.data();
+        if(!msg.ts) return;
+        const ts = msg.ts.toMillis ? msg.ts.toMillis() : 0;
+        const myId = role==='admin' ? 'admin' : (ced||CU?.uid);
+        const activeTab = document.querySelector('.tab.active')?.textContent||'';
+        const isNewMsg = doc.id !== lastKnownMsgId;
+
+        if(isNewMsg && msg.senderId !== myId){
+          lastKnownMsgId = doc.id;
+
+          // Badge en FAB
+          if(!activeTab.includes('Chat')){
+            const badge=document.getElementById('fab-unread');
+            if(badge){
+              const cur=parseInt(badge.textContent)||0;
+              badge.textContent=cur+1;
+              badge.style.display='flex';
+            }
           }
+
+          // Notificación del navegador — funciona con app abierta o minimizada
+          if(window.Notification && Notification.permission==='granted'){
+            try{
+              const notifBody = msg.mediaType ? 
+                (msg.senderName||'Jugador') + ' envió ' + (msg.mediaType==='image'?'una imagen':msg.mediaType==='audio'?'un audio':msg.mediaType==='video'?'un video':'un archivo') :
+                (msg.senderName||'Jugador') + ': ' + (msg.text||'');
+              new Notification('⚽ Warriors FC', {
+                body: notifBody,
+                icon: 'https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg',
+                tag: 'warriors-chat',
+                renotify: true,
+                vibrate: [200,100,200]
+              });
+            }catch(e){ console.log('Notif error:',e); }
+          }
+
+          // ntfy.sh como respaldo
+          ntfyNotify('⚽ Warriors FC — Chat', (msg.senderName||'Jugador') + ': ' + (msg.text||'📎 Archivo'));
+        } else {
+          lastKnownMsgId = doc.id;
         }
-        // Notificación del navegador
-        if(window.Notification && Notification.permission==='granted' && !activeTab.includes('Chat')){
-          try{
-            new Notification('💬 Warriors FC — Chat', {
-              body: (msg.senderName||'Jugador') + ': ' + (msg.text||''),
-              icon: 'https://res.cloudinary.com/dwef0bowz/image/upload/wsjs716llevmiqtdcrvb.jpg',
-              tag: 'warriors-chat',
-              renotify: true
-            });
-          }catch(e){}
-        }
-      }
-      lastKnownMsgId = doc.id;
-    });
+      });
+  }).catch(e=>console.log('tracker error:',e));
 }
 function clearFabUnread(){
   const badge=document.getElementById('fab-unread');
