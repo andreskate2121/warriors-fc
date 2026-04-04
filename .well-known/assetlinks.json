@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.andreskate2121.twa",
+      "sha256_cert_fingerprints": [
+        "C6:AB:F1:36:D3:4B:AD:99:DA:E5:83:E7:DE:B1:42:AA:6E:81:0A:9B:C8:C0:6B:43:6D:5A:25:11:55:67:6F:5C"
+      ]
+    }
+  }
+]
