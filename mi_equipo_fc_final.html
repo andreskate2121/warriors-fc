@@ -678,10 +678,13 @@ function applyConfig(){
 
 // ── INIT ───────────────────────────────────────
 window.addEventListener('load',()=>{
-  // Register Service Worker for PWA
+  // Register Service Worker for PWA y FCM
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./sw.js')
-      .then(()=>console.log('SW registered'))
+      .then(reg=>{
+        console.log('SW registered');
+        window.swRegistration = reg;
+      })
       .catch(e=>console.log('SW error:',e));
   }
   if(typeof firebase==='undefined'){showNoInternet();return;}
@@ -1462,11 +1465,45 @@ function openFloatingChat(){
   if(chatTab) chatTab.scrollIntoView({behavior:'smooth',inline:'center'});
 }
 
-// Pedir permiso de notificaciones
-function requestNotifPermission(){
-  if(window.Notification && Notification.permission === 'default'){
-    Notification.requestPermission();
-  }
+// VAPID Key para FCM Web Push
+const VAPID_KEY = 'BMsbzE2X5AcToJhd4qCb6P7xYrSmpfzseXKhbZrImTitJwl-8fEsNc-bn5vj4kzKJl8VybGLP1HrtGgmYrvj4s0';
+
+// Pedir permiso y suscribir a FCM
+async function requestNotifPermission(){
+  if(!window.Notification) return;
+  try{
+    const permission = await Notification.requestPermission();
+    if(permission === 'granted'){
+      await subscribeFCM();
+    }
+  }catch(e){ console.log('Notif permission error:',e); }
+}
+
+async function subscribeFCM(){
+  try{
+    if(!window.swRegistration) return;
+    // Suscribir al push
+    const subscription = await window.swRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_KEY)
+    });
+    // Guardar suscripción en Firestore
+    const myId = role==='admin' ? 'admin' : (ced||CU?.uid||'anon');
+    await window.db.collection('push_subscriptions').doc(myId).set({
+      subscription: JSON.stringify(subscription),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge: true});
+    console.log('FCM subscription saved');
+  }catch(e){ console.log('FCM subscribe error:',e); }
+}
+
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for(let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
 }
 
 // Track unread messages

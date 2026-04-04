@@ -1,4 +1,4 @@
-const CACHE = 'warriors-fc-v202604030001';
+const CACHE = 'warriors-fc-v202604040002';
 const ASSETS = [
   './mi_equipo_fc_final.html',
   './manifest.json'
