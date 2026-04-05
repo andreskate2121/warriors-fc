@@ -1303,6 +1303,34 @@ function buildChatBubble(m){
   return escapeHtml(m.text||'');
 }
 
+// Supabase Edge Function para notificaciones push reales
+const SUPABASE_URL = 'https://bypfdgekykakcsuspubv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5cGZkZ2VreWtha2NzdXNwdWJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDg4NDcsImV4cCI6MjA5MDg4NDg0N30.gKP7ME4IPVVSNTCgsvpSoIPS5Hax-oMXNrdoi__EAh0';
+
+async function sendPushToAll(title, body){
+  try{
+    // Obtener todas las suscripciones de Firestore
+    const snap = await window.db.collection('push_subscriptions').get();
+    if(snap.empty) return;
+    const myId = role==='admin' ? 'admin' : (ced||CU?.uid||'anon');
+    const subscriptions = snap.docs
+      .filter(d => d.id !== myId)
+      .map(d => d.data().subscription)
+      .filter(Boolean);
+    if(!subscriptions.length) return;
+    // Llamar a la Edge Function de Supabase
+    await fetch(`${SUPABASE_URL}/functions/v1/notify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ title, body, subscriptions })
+    });
+  }catch(e){ console.log('Push error:',e); }
+}
+
 // Canal único de Warriors FC en ntfy.sh
 const NTFY_TOPIC = 'warriors-fc-oviedo-2026';
 
@@ -1563,6 +1591,8 @@ function startFabUnreadTracker(){
 
           // ntfy.sh como respaldo
           ntfyNotify('⚽ Warriors FC — Chat', (msg.senderName||'Jugador') + ': ' + (msg.text||'📎 Archivo'));
+          // Push real via Supabase Edge Function
+          sendPushToAll('⚽ Warriors FC', (msg.senderName||'Jugador') + ': ' + (msg.text||'📎 Archivo'));
         } else {
           lastKnownMsgId = doc.id;
         }
